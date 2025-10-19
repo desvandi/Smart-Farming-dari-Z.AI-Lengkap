@@ -3310,7 +3310,7 @@ void handleStatus() {
     return server.requestAuthentication();
   }
   
-  String html = getStatusHTML();
+  String html = getMaintenanceHTML();
   server.send(200, "text/html", html);
 }
 
@@ -4037,479 +4037,87 @@ void handleLogin() {
 //============================================================================
 // HTML TEMPLATES
 //============================================================================
+
 String getIndexHTML() {
-  return R"(
-<!DOCTYPE html>
-<html lang="en">
+  return R"=====(
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Farming System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2196f3">
-    <style>
-        .card {
-            transition: transform 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        .status-online {
-            color: #28a745;
-        }
-        .status-offline {
-            color: #dc3545;
-        }
-        .battery-high {
-            color: #28a745;
-        }
-        .battery-medium {
-            color: #ffc107;
-        }
-        .battery-low {
-            color: #dc3545;
-        }
-        .loading {
-            display: none;
-        }
-        .chart-container {
-            position: relative;
-            height: 300px;
-        }
-    </style>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1894.7">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #0000e9; -webkit-text-stroke: #0000e9}
+    p.p4 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #000000; -webkit-text-stroke: #000000}
+    p.p7 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #000000; -webkit-text-stroke: #000000; min-height: 14.0px}
+    li.li1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #0000e9; -webkit-text-stroke: #0000e9}
+    li.li2 {margin: 0.0px 0.0px 6.0px 0.0px; font: 12.0px Times; color: #000000}
+    span.s1 {text-decoration: underline ; font-kerning: none}
+    span.s2 {-webkit-text-stroke: 0px #000000}
+    span.s3 {font-kerning: none; color: #000000; -webkit-text-stroke: 0px #000000}
+    span.s4 {font-kerning: none; -webkit-text-stroke: 0px #000000}
+    span.s5 {font-kerning: none}
+    ul.ul1 {list-style-type: disc}
+    ul.ul2 {list-style-type: circle}
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="#"><i class="bi bi-house-heart-fill"></i> Smart Farming</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/"><i class="bi bi-house"></i> Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/control"><i class="bi bi-sliders"></i> Control</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/graphs"><i class="bi bi-graph-up"></i> Graphs</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/status"><i class="bi bi-info-circle"></i> Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/maintenance"><i class="bi bi-tools"></i> Maintenance</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> Settings</a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> Admin
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="/logs"><i class="bi bi-file-text"></i> Logs</a></li>
-                            <li><a class="dropdown-item" href="/prediction"><i class="bi bi-cpu"></i> Prediction</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1><i class="bi bi-house-heart-fill"></i> Smart Farming Dashboard</h1>
-                    <div>
-                        <span class="badge bg-success me-2" id="connectionStatus"><i class="bi bi-wifi"></i> Connected</span>
-                        <span class="badge bg-info" id="systemMode">Local Mode</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sensor Cards -->
-        <div class="row mb-4">
-            <div class="col-md-6 col-lg-3 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-thermometer-half text-danger"></i> Temperature</h5>
-                        <h2 class="card-text" id="temperature">--°C</h2>
-                        <div class="progress">
-                            <div class="progress-bar bg-danger" id="tempProgress" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-3 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-droplet text-info"></i> Humidity</h5>
-                        <h2 class="card-text" id="humidity">--%</h2>
-                        <div class="progress">
-                            <div class="progress-bar bg-info" id="humidityProgress" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-3 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-battery-charging text-success"></i> Battery</h5>
-                        <h2 class="card-text" id="battery">--%</h2>
-                        <div class="progress">
-                            <div class="progress-bar bg-success" id="batteryProgress" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-3 mb-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-sun text-warning"></i> Light</h5>
-                        <h2 class="card-text" id="light">-- lux</h2>
-                        <div class="progress">
-                            <div class="progress-bar bg-warning" id="lightProgress" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Control Cards -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h3><i class="bi bi-sliders"></i> Quick Control</h3>
-            </div>
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-fan"></i> Exhaust Fan</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="fanSwitch">
-                            <label class="form-check-label" for="fanSwitch">Status: <span id="fanStatus">OFF</span></label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-droplet"></i> Pump Gudang</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="pumpGudangSwitch">
-                            <label class="form-check-label" for="pumpGudangSwitch">Status: <span id="pumpGudangStatus">OFF</span></label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-moisture"></i> Humidifier</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="humidifierSwitch">
-                            <label class="form-check-label" for="humidifierSwitch">Status: <span id="humidifierStatus">OFF</span></label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Charts -->
-        <div class="row mb-4">
-            <div class="col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-graph-up"></i> Temperature & Humidity</h5>
-                        <div class="chart-container">
-                            <canvas id="tempHumidityChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-battery-charging"></i> Battery Status</h5>
-                        <div class="chart-container">
-                            <canvas id="batteryChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notifications -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-bell"></i> Notifications</h5>
-                        <div id="notifications" class="list-group">
-                            <div class="list-group-item">
-                                <i class="bi bi-info-circle text-info"></i> System started successfully
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="loading">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // WebSocket connection
-        const socket = new WebSocket('ws://' + window.location.hostname + ':81');
-        
-        socket.onopen = function(event) {
-            console.log('WebSocket connected');
-            document.getElementById('connectionStatus').innerHTML = '<i class="bi bi-wifi"></i> Connected';
-            document.getElementById('connectionStatus').className = 'badge bg-success me-2';
-        };
-        
-        socket.onclose = function(event) {
-            console.log('WebSocket disconnected');
-            document.getElementById('connectionStatus').innerHTML = '<i class="bi bi-wifi-off"></i> Disconnected';
-            document.getElementById('connectionStatus').className = 'badge bg-danger me-2';
-        };
-        
-        socket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            updateDashboard(data);
-        };
-        
-        // Update dashboard with sensor data
-        function updateDashboard(data) {
-            // Update sensor values
-            document.getElementById('temperature').textContent = data.temperature.toFixed(1) + '°C';
-            document.getElementById('humidity').textContent = data.humidity.toFixed(1) + '%';
-            document.getElementById('battery').textContent = data.batterySOC.toFixed(1) + '%';
-            document.getElementById('light').textContent = data.lightGudang.toFixed(0) + ' lux';
-            
-            // Update progress bars
-            document.getElementById('tempProgress').style.width = Math.min(100, (data.temperature / 40) * 100) + '%';
-            document.getElementById('humidityProgress').style.width = data.humidity + '%';
-            document.getElementById('batteryProgress').style.width = data.batterySOC + '%';
-            document.getElementById('lightProgress').style.width = Math.min(100, (data.lightGudang / 1000) * 100) + '%';
-            
-            // Update battery color
-            const batteryProgress = document.getElementById('batteryProgress');
-            batteryProgress.className = 'progress-bar';
-            if (data.batterySOC > 60) {
-                batteryProgress.classList.add('bg-success');
-            } else if (data.batterySOC > 30) {
-                batteryProgress.classList.add('bg-warning');
-            } else {
-                batteryProgress.classList.add('bg-danger');
-            }
-            
-            // Update load status
-            data.loads.forEach(load => {
-                const switchId = load.name.toLowerCase().replace(' ', '') + 'Switch';
-                const statusId = load.name.toLowerCase().replace(' ', '') + 'Status';
-                const switchElement = document.getElementById(switchId);
-                const statusElement = document.getElementById(statusId);
-                
-                if (switchElement) {
-                    switchElement.checked = load.status;
-                }
-                if (statusElement) {
-                    statusElement.textContent = load.status ? 'ON' : 'OFF';
-                }
-            });
-            
-            // Update system mode
-            document.getElementById('systemMode').textContent = data.mode;
-            
-            // Update charts
-            updateCharts(data);
-        }
-        
-        // Initialize charts
-        const tempHumidityChart = new Chart(document.getElementById('tempHumidityChart'), {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Temperature (°C)',
-                    data: [],
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    tension: 0.1
-                }, {
-                    label: 'Humidity (%)',
-                    data: [],
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        
-        const batteryChart = new Chart(document.getElementById('batteryChart'), {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Battery SOC (%)',
-                    data: [],
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
-                }
-            }
-        });
-        
-        // Update charts with new data
-        function updateCharts(data) {
-            const now = new Date().toLocaleTimeString();
-            
-            // Update temperature/humidity chart
-            if (tempHumidityChart.data.labels.length > 20) {
-                tempHumidityChart.data.labels.shift();
-                tempHumidityChart.data.datasets[0].data.shift();
-                tempHumidityChart.data.datasets[1].data.shift();
-            }
-            tempHumidityChart.data.labels.push(now);
-            tempHumidityChart.data.datasets[0].data.push(data.temperature);
-            tempHumidityChart.data.datasets[1].data.push(data.humidity);
-            tempHumidityChart.update();
-            
-            // Update battery chart
-            if (batteryChart.data.labels.length > 20) {
-                batteryChart.data.labels.shift();
-                batteryChart.data.datasets[0].data.shift();
-            }
-            batteryChart.data.labels.push(now);
-            batteryChart.data.datasets[0].data.push(data.batterySOC);
-            batteryChart.update();
-        }
-        
-        // Control load
-        function controlLoad(loadName, status) {
-            fetch('/api/control', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    load: loadName,
-                    status: status
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addNotification('Load ' + loadName + ' turned ' + (status ? 'ON' : 'OFF'), 'success');
-                } else {
-                    addNotification('Failed to control load', 'danger');
-                }
-            })
-            .catch(error => {
-                addNotification('Error: ' + error, 'danger');
-            });
-        }
-        
-        // Add notification
-        function addNotification(message, type) {
-            const notifications = document.getElementById('notifications');
-            const notification = document.createElement('div');
-            notification.className = 'list-group-item list-group-item-' + type;
-            
-            const icon = type === 'success' ? 'check-circle' : 
-                         type === 'danger' ? 'exclamation-triangle' : 
-                         type === 'warning' ? 'exclamation-triangle' : 'info-circle';
-            
-            notification.innerHTML = '<i class="bi bi-' + icon + ' text-' + type + '"></i> ' + message;
-            notifications.insertBefore(notification, notifications.firstChild);
-            
-            // Keep only last 10 notifications
-            while (notifications.children.length > 10) {
-                notifications.removeChild(notifications.lastChild);
-            }
-        }
-        
-        // Handle switch changes
-        document.getElementById('fanSwitch').addEventListener('change', function() {
-            controlLoad('Exhaust Fan', this.checked);
-        });
-        
-        document.getElementById('pumpGudangSwitch').addEventListener('change', function() {
-            controlLoad('Pump Gudang', this.checked);
-        });
-        
-        document.getElementById('humidifierSwitch').addEventListener('change', function() {
-            controlLoad('Humidifier', this.checked);
-        });
-        
-        // Logout function
-        function logout() {
-            fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: '',
-                    password: ''
-                })
-            })
-            .then(() => {
-                window.location.href = '/';
-            });
-        }
-        
-        // Register service worker for PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => console.log('Service Worker registered'))
-                .catch(error => console.log('Service Worker registration failed'));
-        }
-    </script>
+<p class="p1"><span class="s1">Smart Farming</span></p>
+<ul class="ul1">
+  <li class="li1"><span class="s2"><a href="file:///"><span class="s1">Dashboard</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+  <li class="li1"><span class="s2"><a href="file:///control"><span class="s1">Control</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+  <li class="li1"><span class="s2"><a href="file:///graphs"><span class="s1">Graphs</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+  <li class="li1"><span class="s2"><a href="file:///status"><span class="s1">Status</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+  <li class="li1"><span class="s2"><a href="file:///maintenance"><span class="s1">Maintenance</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+  <li class="li1"><span class="s2"><a href="file:///settings"><span class="s1">Settings</span></a></span><span class="s3"><span class="Apple-converted-space"> </span></span></li>
+</ul>
+<ul class="ul1">
+  <li class="li1"><span class="s2"></span><span class="s1">Admin</span></li>
+  <ul class="ul2">
+    <li class="li1"><span class="s2"><a href="file:///logs"><span class="s1">Logs</span></a></span></li>
+    <li class="li1"><span class="s2"><a href="file:///prediction"><span class="s1">Prediction</span></a></span></li>
+    <li class="li2"><span class="s4"><br>
+</span></li>
+    <li class="li1"><span class="s2"></span><span class="s1">Logout</span></li>
+  </ul>
+</ul>
+<h1 style="margin: 0.0px 0.0px 16.1px 0.0px; font: 24.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Smart Farming Dashboard</b></span></h1>
+<p class="p4"><span class="s5">Connected Local Mode<span class="Apple-converted-space"> </span></span></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Temperature</b></span></h5>
+<h2 style="margin: 0.0px 0.0px 14.9px 0.0px; font: 18.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>--°C</b></span></h2>
+<p class="p7"><span class="s5"></span><br></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Humidity</b></span></h5>
+<h2 style="margin: 0.0px 0.0px 14.9px 0.0px; font: 18.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>--%</b></span></h2>
+<p class="p7"><span class="s5"></span><br></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Battery</b></span></h5>
+<h2 style="margin: 0.0px 0.0px 14.9px 0.0px; font: 18.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>--%</b></span></h2>
+<p class="p7"><span class="s5"></span><br></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Light</b></span></h5>
+<h2 style="margin: 0.0px 0.0px 14.9px 0.0px; font: 18.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>-- lux</b></span></h2>
+<p class="p7"><span class="s5"></span><br></p>
+<h3 style="margin: 0.0px 0.0px 14.0px 0.0px; font: 14.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Quick Control</b></span></h3>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Exhaust Fan</b></span></h5>
+<p class="p4"><span class="s5">Status: OFF<span class="Apple-converted-space"> </span></span></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Pump Gudang</b></span></h5>
+<p class="p4"><span class="s5">Status: OFF<span class="Apple-converted-space"> </span></span></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Humidifier</b></span></h5>
+<p class="p4"><span class="s5">Status: OFF<span class="Apple-converted-space"> </span></span></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Temperature &amp; Humidity</b></span></h5>
+<p class="p7"><span class="s5"></span><br></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Battery Status</b></span></h5>
+<p class="p7"><span class="s5"></span><br></p>
+<h5 style="margin: 0.0px 0.0px 16.6px 0.0px; font: 10.0px Times; color: #000000; -webkit-text-stroke: #000000"><span class="s5"><b>Notifications</b></span></h5>
+<p class="p4"><span class="s5">System started successfully<span class="Apple-converted-space"> </span></span></p>
 </body>
 </html>
-)";
+
+)=====";
 }
 
 String getGraphsHTML() {
-  return R"(
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4542,7 +4150,7 @@ String getGraphsHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-graph-up"></i> Sensor Graphs</h1>
-        
+
         <div class="row mb-4">
             <div class="col-md-6 mb-3">
                 <div class="card">
@@ -4565,7 +4173,7 @@ String getGraphsHTML() {
                 </div>
             </div>
         </div>
-        
+
         <div class="row mb-4">
             <div class="col-md-6 mb-3">
                 <div class="card">
@@ -4588,7 +4196,7 @@ String getGraphsHTML() {
                 </div>
             </div>
         </div>
-        
+
         <div class="row">
             <div class="col-12">
                 <div class="card">
@@ -4667,7 +4275,7 @@ String getGraphsHTML() {
                 }
             }
         });
-        
+
         const batteryChart = new Chart(document.getElementById('batteryChart'), {
             type: 'line',
             data: {
@@ -4706,7 +4314,7 @@ String getGraphsHTML() {
                 }
             }
         });
-        
+
         const energyChart = new Chart(document.getElementById('energyChart'), {
             type: 'bar',
             data: {
@@ -4735,7 +4343,7 @@ String getGraphsHTML() {
                 }
             }
         });
-        
+
         // Fetch historical data
         function fetchHistoricalData(timeRange) {
             fetch('/api/sensors/history?range=' + timeRange)
@@ -4747,7 +4355,7 @@ String getGraphsHTML() {
                     console.error('Error fetching historical data:', error);
                 });
         }
-        
+
         // Update charts with data
         function updateCharts(data) {
             // Update temperature/humidity chart
@@ -4755,19 +4363,19 @@ String getGraphsHTML() {
             tempHumidityChart.data.datasets[0].data = data.temperature;
             tempHumidityChart.data.datasets[1].data = data.humidity;
             tempHumidityChart.update();
-            
+
             // Update light chart
             lightChart.data.labels = data.timestamps;
             lightChart.data.datasets[0].data = data.lightGudang;
             lightChart.data.datasets[1].data = data.lightKebun;
             lightChart.update();
-            
+
             // Update battery chart
             batteryChart.data.labels = data.timestamps;
             batteryChart.data.datasets[0].data = data.batterySOC;
             batteryChart.data.datasets[1].data = data.batteryVoltage;
             batteryChart.update();
-            
+
             // Update energy chart
             energyChart.data.labels = data.dates;
             energyChart.data.datasets[0].data = data.mpptEnergy;
@@ -4775,28 +4383,28 @@ String getGraphsHTML() {
             energyChart.data.datasets[2].data = data.loadEnergy;
             energyChart.update();
         }
-        
+
         // Change time range
         function changeTimeRange(range) {
             fetchHistoricalData(range);
-            
+
             // Update button states
             document.querySelectorAll('.btn-group .btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
         }
-        
+
         // Load default data (24 hours)
         fetchHistoricalData('24h');
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
 String getControlHTML() {
-  return R"(
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4845,8 +4453,7 @@ String getControlHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-sliders"></i> System Control</h1>
-        
-        <!-- System Mode -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -4879,8 +4486,7 @@ String getControlHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Load Control -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <h3><i class="bi bi-power"></i> Load Control</h3>
@@ -4982,8 +4588,7 @@ String getControlHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Inverter Control -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -5011,8 +4616,7 @@ String getControlHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Custom Rules -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -5022,14 +4626,12 @@ String getControlHTML() {
                             <i class="bi bi-plus-circle"></i> Add Rule
                         </button>
                         <div id="customRules">
-                            <!-- Rules will be loaded here -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Schedules -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -5039,15 +4641,13 @@ String getControlHTML() {
                             <i class="bi bi-plus-circle"></i> Add Schedule
                         </button>
                         <div id="schedules">
-                            <!-- Schedules will be loaded here -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Add Rule Modal -->
+
     <div class="modal fade" id="addRuleModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -5124,8 +4724,7 @@ String getControlHTML() {
             </div>
         </div>
     </div>
-    
-    <!-- Add Schedule Modal -->
+
     <div class="modal fade" id="addScheduleModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -5201,11 +4800,11 @@ String getControlHTML() {
             loadSensorData();
             loadCustomRules();
             loadSchedules();
-            
+
             // Update sensor data every 5 seconds
             setInterval(loadSensorData, 5000);
         });
-        
+
         // Load sensor data
         function loadSensorData() {
             fetch('/api/sensors')
@@ -5218,20 +4817,20 @@ String getControlHTML() {
                     console.error('Error loading sensor data:', error);
                 });
         }
-        
+
         // Update load status
         function updateLoadStatus(data) {
             data.loads.forEach(load => {
-                const switchId = load.name.toLowerCase().replace(' ', '') + 'Switch';
-                const statusId = load.name.toLowerCase().replace(' ', '') + 'Status';
-                const currentId = load.name.toLowerCase().replace(' ', '') + 'Current';
-                const cardId = load.name.toLowerCase().replace(' ', '') + 'Card';
-                
+                const switchId = load.name.toLowerCase().replace(" ", "") + 'Switch';
+                const statusId = load.name.toLowerCase().replace(" ", "") + 'Status';
+                const currentId = load.name.toLowerCase().replace(" ", "") + 'Current';
+                const cardId = load.name.toLowerCase().replace(" ", "") + 'Card';
+
                 const switchElement = document.getElementById(switchId);
                 const statusElement = document.getElementById(statusId);
                 const currentElement = document.getElementById(currentId);
                 const cardElement = document.getElementById(cardId);
-                
+
                 if (switchElement) {
                     switchElement.checked = load.status;
                 }
@@ -5252,12 +4851,12 @@ String getControlHTML() {
                 }
             });
         }
-        
+
         // Update system mode
         function updateSystemMode(mode) {
             document.getElementById('systemMode').value = mode;
         }
-        
+
         // Control load
         function controlLoad(loadName, status) {
             fetch('/api/control', {
@@ -5283,7 +4882,7 @@ String getControlHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Control inverter
         function controlInverter(status) {
             fetch('/api/inverter', {
@@ -5307,11 +4906,11 @@ String getControlHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Change system mode
         function changeSystemMode() {
             const mode = document.getElementById('systemMode').value;
-            
+
             fetch('/api/mode', {
                 method: 'POST',
                 headers: {
@@ -5333,7 +4932,7 @@ String getControlHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Emergency stop
         function emergencyStop() {
             if (confirm('Are you sure you want to emergency stop all loads?')) {
@@ -5360,20 +4959,20 @@ String getControlHTML() {
                 });
             }
         }
-        
+
         // Load custom rules
         function loadCustomRules() {
             fetch('/api/rules')
                 .then(response => response.json())
                 .then(data => {
                     const rulesContainer = document.getElementById('customRules');
-                    rulesContainer.innerHTML = '';
-                    
+                    rulesContainer.innerHTML = "";
+
                     data.rules.forEach(rule => {
                         const ruleElement = document.createElement('div');
                         ruleElement.className = 'custom-rule';
-                        ruleElement.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-center">
+                        ruleElement.innerHTML = 
+                            `<div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <strong>${rule.name}</strong><br>
                                     <small class="text-muted">
@@ -5402,12 +5001,12 @@ String getControlHTML() {
                     console.error('Error loading custom rules:', error);
                 });
         }
-        
+
         // Add rule
         function addRule() {
             const form = document.getElementById('addRuleForm');
             const formData = new FormData(form);
-            
+
             const rule = {
                 name: document.getElementById('ruleName').value,
                 sensor: document.getElementById('ruleSensor').value,
@@ -5416,7 +5015,7 @@ String getControlHTML() {
                 action: document.getElementById('ruleAction').value,
                 cooldown: parseInt(document.getElementById('ruleCooldown').value)
             };
-            
+
             fetch('/api/rules', {
                 method: 'POST',
                 headers: {
@@ -5439,14 +5038,14 @@ String getControlHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Toggle rule
         function toggleRule(id, active) {
             // This would require an API endpoint to update rule status
             // For now, we'll just show a notification
             showNotification('Rule ' + (active ? 'activated' : 'deactivated'), 'info');
         }
-        
+
         // Delete rule
         function deleteRule(id) {
             if (confirm('Are you sure you want to delete this rule?')) {
@@ -5473,15 +5072,15 @@ String getControlHTML() {
                 });
             }
         }
-        
+
         // Load schedules
         function loadSchedules() {
             fetch('/api/schedules')
                 .then(response => response.json())
                 .then(data => {
                     const schedulesContainer = document.getElementById('schedules');
-                    schedulesContainer.innerHTML = '';
-                    
+                    schedulesContainer.innerHTML = "";
+
                     data.schedules.forEach(schedule => {
                         const scheduleElement = document.createElement('div');
                         scheduleElement.className = 'custom-rule';
@@ -5514,7 +5113,7 @@ String getControlHTML() {
                     console.error('Error loading schedules:', error);
                 });
         }
-        
+
         // Add schedule
         function addSchedule() {
             const time = document.getElementById('scheduleTime').value.split(':');
@@ -5527,7 +5126,7 @@ String getControlHTML() {
                 conditionValue: parseFloat(document.getElementById('scheduleConditionValue').value),
                 conditionOperator: document.getElementById('scheduleConditionOperator').value
             };
-            
+
             fetch('/api/schedules', {
                 method: 'POST',
                 headers: {
@@ -5550,14 +5149,14 @@ String getControlHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Toggle schedule
         function toggleSchedule(id, active) {
             // This would require an API endpoint to update schedule status
             // For now, we'll just show a notification
             showNotification('Schedule ' + (active ? 'activated' : 'deactivated'), 'info');
         }
-        
+
         // Delete schedule
         function deleteSchedule(id) {
             if (confirm('Are you sure you want to delete this schedule?')) {
@@ -5567,7 +5166,7 @@ String getControlHTML() {
                 loadSchedules(); // Refresh schedules
             }
         }
-        
+
         // Show notification
         function showNotification(message, type) {
             const notification = document.createElement('div');
@@ -5576,651 +5175,49 @@ String getControlHTML() {
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.insertBefore(notification, document.body.firstChild);
-            
+
             // Auto dismiss after 5 seconds
             setTimeout(() => {
                 notification.remove();
             }, 5000);
         }
-        
+
         // Handle switch changes
         document.getElementById('fanSwitch').addEventListener('change', function() {
             controlLoad('Exhaust Fan', this.checked);
         });
-        
+
         document.getElementById('pumpGudangSwitch').addEventListener('change', function() {
             controlLoad('Pump Gudang', this.checked);
         });
-        
+
         document.getElementById('humidifierSwitch').addEventListener('change', function() {
             controlLoad('Humidifier', this.checked);
         });
-        
+
         document.getElementById('pumpKebunSwitch').addEventListener('change', function() {
             controlLoad('Pump Kebun', this.checked);
         });
-        
+
         document.getElementById('lampJalanSwitch').addEventListener('change', function() {
             controlLoad('Lampu Jalan', this.checked);
         });
-        
+
         document.getElementById('lampGudangSwitch').addEventListener('change', function() {
             controlLoad('Lampu Gudang', this.checked);
         });
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
-String getSystemHTML() {
-  return R"(
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Status - Smart Farming System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-    <style>
-        .status-card {
-            transition: all 0.3s ease;
-        }
-        .status-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .status-online {
-            color: #28a745;
-        }
-        .status-offline {
-            color: #dc3545;
-        }
-        .status-warning {
-            color: #ffc107;
-        }
-        .health-good {
-            background-color: #d4edda;
-        }
-        .health-warning {
-            background-color: #fff3cd;
-        }
-        .health-critical {
-            background-color: #f8d7da;
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/"><i class="bi bi-house-heart-fill"></i> Smart Farming</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/"><i class="bi bi-house"></i> Dashboard</a>
-                <a class="nav-link" href="/control"><i class="bi bi-sliders"></i> Control</a>
-                <a class="nav-link" href="/graphs"><i class="bi bi-graph-up"></i> Graphs</a>
-                <a class="nav-link active" href="/status"><i class="bi bi-info-circle"></i> Status</a>
-                <a class="nav-link" href="/maintenance"><i class="bi bi-tools"></i> Maintenance</a>
-                <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> Settings</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <h1><i class="bi bi-info-circle"></i> System Status</h1>
-        
-        <!-- System Overview -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-cpu"></i> System Overview</h5>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-wifi status-online me-2"></i>
-                                    <div>
-                                        <div>WiFi Status</div>
-                                        <strong id="wifiStatus">Connected</strong>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-clock status-online me-2"></i>
-                                    <div>
-                                        <div>Uptime</div>
-                                        <strong id="uptime">0d 0h 0m</strong>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-memory status-online me-2"></i>
-                                    <div>
-                                        <div>Free Memory</div>
-                                        <strong id="freeMemory">0 KB</strong>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-hdd status-online me-2"></i>
-                                    <div>
-                                        <div>SD Card</div>
-                                        <strong id="sdCard">Available</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Component Health -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h3><i class="bi bi-heart-pulse"></i> Component Health</h3>
-            </div>
-            <div id="componentHealth">
-                <!-- Component health will be loaded here -->
-            </div>
-        </div>
-        
-        <!-- Battery Information -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-battery-charging"></i> Battery Information</h5>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>State of Charge (SOC)</span>
-                                <strong id="batterySOC">0%</strong>
-                            </div>
-                            <div class="progress">
-                                <div class="progress-bar" id="batterySOCBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>State of Health (SOH)</span>
-                                <strong id="batterySOH">0%</strong>
-                            </div>
-                            <div class="progress">
-                                <div class="progress-bar bg-info" id="batterySOHBar" style="width: 0%"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Voltage</span>
-                                <strong id="batteryVoltage">0V</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Current</span>
-                                <strong id="batteryCurrent">0A</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Temperature</span>
-                                <strong id="batteryTemp">0°C</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Cycles</span>
-                                <strong id="batteryCycles">0</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Charging Status</span>
-                                <strong id="chargingStatus">Unknown</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-lightning-charge"></i> Energy Information</h5>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>MPPT Energy</span>
-                                <strong id="mpptEnergy">0 Wh</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>PWM Energy</span>
-                                <strong id="pwmEnergy">0 Wh</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Load Energy</span>
-                                <strong id="loadEnergy">0 Wh</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Energy Charged</span>
-                                <strong id="energyCharged">0 Wh</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Energy Discharged</span>
-                                <strong id="energyDischarged">0 Wh</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>Efficiency</span>
-                                <strong id="efficiency">0%</strong>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>PWM Charging Report</span>
-                                <button class="btn btn-sm btn-primary" onclick="showPWMReport()">
-                                    <i class="bi bi-file-text"></i> View Report
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Sensor Status -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h3><i class="bi bi-thermometer-half"></i> Sensor Status</h3>
-            </div>
-            <div id="sensorStatus">
-                <!-- Sensor status will be loaded here -->
-            </div>
-        </div>
-        
-        <!-- System Logs -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-file-text"></i> Recent System Logs</h5>
-                        <div id="systemLogs">
-                            <!-- Logs will be loaded here -->
-                        </div>
-                        <div class="mt-3">
-                            <a href="/logs" class="btn btn-primary">
-                                <i class="bi bi-file-text"></i> View All Logs
-                            </a>
-                            <a href="/api/logs/download" class="btn btn-secondary">
-                                <i class="bi bi-download"></i> Download Logs
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- PWM Report Modal -->
-    <div class="modal fade" id="pwmReportModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">PWM Charging Report</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Current Status</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>Current</td>
-                                    <td id="pwmCurrent">0 A</td>
-                                </tr>
-                                <tr>
-                                    <td>Voltage</td>
-                                    <td id="pwmVoltage">0 V</td>
-                                </tr>
-                                <tr>
-                                    <td>Power</td>
-                                    <td id="pwmPower">0 W</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Daily Summary</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>Energy Today</td>
-                                    <td id="pwmEnergyToday">0 Wh</td>
-                                </tr>
-                                <tr>
-                                    <td>Peak Current</td>
-                                    <td id="pwmPeakCurrent">0 A</td>
-                                </tr>
-                                <tr>
-                                    <td>Average Current</td>
-                                    <td id="pwmAvgCurrent">0 A</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    <h6 class="mt-3">Charging Efficiency</h6>
-                    <div class="progress">
-                        <div class="progress-bar" id="pwmEfficiencyBar" style="width: 0%"></div>
-                    </div>
-                    <div class="text-center mt-2">
-                        <strong id="pwmEfficiency">0%</strong>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="exportPWMReport()">
-                        <i class="bi bi-download"></i> Export Report
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Load initial data
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSystemStatus();
-            loadComponentHealth();
-            loadSensorStatus();
-            loadSystemLogs();
-            
-            // Update data every 10 seconds
-            setInterval(loadSystemStatus, 10000);
-            setInterval(loadComponentHealth, 30000);
-            setInterval(loadSensorStatus, 10000);
-            setInterval(loadSystemLogs, 30000);
-        });
-        
-        // Load system status
-        function loadSystemStatus() {
-            fetch('/api/sensors')
-                .then(response => response.json())
-                .then(data => {
-                    updateSystemOverview(data);
-                    updateBatteryInfo(data.battery);
-                    updateEnergyInfo(data.energy);
-                })
-                .catch(error => {
-                    console.error('Error loading system status:', error);
-                });
-        }
-        
-        // Update system overview
-        function updateSystemOverview(data) {
-            document.getElementById('wifiStatus').textContent = 'Connected';
-            document.getElementById('uptime').textContent = calculateUptime(data.uptime || 0);
-            document.getElementById('freeMemory').textContent = formatBytes(data.freeMemory || 0);
-            document.getElementById('sdCard').textContent = 'Available';
-        }
-        
-        // Update battery information
-        function updateBatteryInfo(battery) {
-            document.getElementById('batterySOC').textContent = battery.soc.toFixed(1) + '%';
-            document.getElementById('batterySOCBar').style.width = battery.soc + '%';
-            
-            // Update battery color based on SOC
-            const batteryBar = document.getElementById('batterySOCBar');
-            batteryBar.className = 'progress-bar';
-            if (battery.soc > 60) {
-                batteryBar.classList.add('bg-success');
-            } else if (battery.soc > 30) {
-                batteryBar.classList.add('bg-warning');
-            } else {
-                batteryBar.classList.add('bg-danger');
-            }
-            
-            document.getElementById('batterySOH').textContent = battery.soh.toFixed(1) + '%';
-            document.getElementById('batterySOHBar').style.width = battery.soh + '%';
-            
-            document.getElementById('batteryVoltage').textContent = battery.voltage.toFixed(2) + 'V';
-            document.getElementById('batteryCurrent').textContent = battery.current.toFixed(2) + 'A';
-            document.getElementById('batteryTemp').textContent = battery.temperature.toFixed(1) + '°C';
-            document.getElementById('batteryCycles').textContent = battery.cycles;
-            document.getElementById('chargingStatus').textContent = battery.isCharging ? 'Charging' : 'Discharging';
-        }
-        
-        // Update energy information
-        function updateEnergyInfo(energy) {
-            document.getElementById('mpptEnergy').textContent = energy.mpptEnergy.toFixed(1) + ' Wh';
-            document.getElementById('pwmEnergy').textContent = energy.pwmEnergy.toFixed(1) + ' Wh';
-            document.getElementById('loadEnergy').textContent = energy.loadEnergy.toFixed(1) + ' Wh';
-            document.getElementById('energyCharged').textContent = energy.energyCharged.toFixed(1) + ' Wh';
-            document.getElementById('energyDischarged').textContent = energy.energyDischarged.toFixed(1) + ' Wh';
-            document.getElementById('efficiency').textContent = energy.efficiency.toFixed(1) + '%';
-        }
-        
-        // Load component health
-        function loadComponentHealth() {
-            fetch('/api/health')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('componentHealth');
-                    container.innerHTML = '';
-                    
-                    data.components.forEach(component => {
-                        const healthClass = component.healthScore > 80 ? 'health-good' : 
-                                          component.healthScore > 50 ? 'health-warning' : 'health-critical';
-                        
-                        const statusIcon = component.healthScore > 80 ? 'check-circle' : 
-                                          component.healthScore > 50 ? 'exclamation-triangle' : 'x-circle';
-                        
-                        const statusColor = component.healthScore > 80 ? 'status-online' : 
-                                           component.healthScore > 50 ? 'status-warning' : 'status-offline';
-                        
-                        const element = document.createElement('div');
-                        element.className = 'col-md-6 col-lg-4 mb-3';
-                        element.innerHTML = `
-                            <div class="card status-card ${healthClass}">
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <i class="bi bi-${statusIcon} ${statusColor} me-2"></i>
-                                        ${component.name}
-                                    </h6>
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-between">
-                                            <span>Health Score</span>
-                                            <strong>${component.healthScore.toFixed(1)}%</strong>
-                                        </div>
-                                        <div class="progress">
-                                            <div class="progress-bar" style="width: ${component.healthScore}%"></div>
-                                        </div>
-                                    </div>
-                                    <div class="small text-muted">
-                                        <div>Failures: ${component.failureCount}</div>
-                                        <div>Lifetime: ${component.currentLifetime.toFixed(0)} / ${component.expectedLifetime.toFixed(0)} hours</div>
-                                        ${component.maintenanceRequired ? '<div class="text-warning">Maintenance Required</div>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        container.appendChild(element);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading component health:', error);
-                });
-        }
-        
-        // Load sensor status
-        function loadSensorStatus() {
-            fetch('/api/sensors')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('sensorStatus');
-                    container.innerHTML = '';
-                    
-                    const sensors = [
-                        { name: 'Temperature Gudang', value: data.temperature, unit: '°C', icon: 'thermometer-half' },
-                        { name: 'Humidity Gudang', value: data.humidity, unit: '%', icon: 'droplet' },
-                        { name: 'Light Gudang', value: data.lightGudang, unit: ' lux', icon: 'sun' },
-                        { name: 'CO2 Gudang', value: data.co2, unit: ' ppm', icon: 'cloud' },
-                        { name: 'Soil Moisture', value: data.soilMoisture, unit: '%', icon: 'moisture' },
-                        { name: 'Pressure Kebun', value: data.pressure, unit: ' hPa', icon: 'speedometer2' },
-                        { name: 'Temperature Kebun', value: data.temperatureKebun, unit: '°C', icon: 'thermometer-half' },
-                        { name: 'Light Kebun', value: data.lightKebun, unit: ' lux', icon: 'sun' },
-                        { name: 'Water Pressure', value: data.waterPressure, unit: ' Pa', icon: 'water' }
-                    ];
-                    
-                    sensors.forEach(sensor => {
-                        const element = document.createElement('div');
-                        element.className = 'col-md-6 col-lg-4 mb-3';
-                        element.innerHTML = `
-                            <div class="card status-card">
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <i class="bi bi-${sensor.icon} me-2"></i>
-                                        ${sensor.name}
-                                    </h6>
-                                    <div class="h4">${sensor.value.toFixed(1)}${sensor.unit}</div>
-                                </div>
-                            </div>
-                        `;
-                        container.appendChild(element);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading sensor status:', error);
-                });
-        }
-        
-        // Load system logs
-        function loadSystemLogs() {
-            fetch('/api/logs')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('systemLogs');
-                    container.innerHTML = '';
-                    
-                    data.logs.forEach(log => {
-                        const levelClass = log.level === 'ERROR' ? 'danger' : 
-                                          log.level === 'WARNING' ? 'warning' : 
-                                          log.level === 'INFO' ? 'info' : 'secondary';
-                        
-                        const element = document.createElement('div');
-                        element.className = `list-group-item list-group-item-${levelClass}`;
-                        element.innerHTML = `
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <i class="bi bi-${log.level === 'ERROR' ? 'x-circle' : 
-                                                   log.level === 'WARNING' ? 'exclamation-triangle' : 
-                                                   log.level === 'INFO' ? 'info-circle' : 'circle'} me-2"></i>
-                                    ${log.message}
-                                </div>
-                                <small class="text-muted">${new Date(log.timestamp).toLocaleString()}</small>
-                            </div>
-                        `;
-                        container.appendChild(element);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading system logs:', error);
-                });
-        }
-        
-        // Show PWM report
-        function showPWMReport() {
-            fetch('/api/energy')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('pwmCurrent').textContent = data.pwmReport.current.toFixed(2) + ' A';
-                    document.getElementById('pwmVoltage').textContent = data.pwmReport.voltage.toFixed(2) + ' V';
-                    document.getElementById('pwmPower').textContent = data.pwmReport.power.toFixed(1) + ' W';
-                    document.getElementById('pwmEnergyToday').textContent = data.pwmReport.energyToday.toFixed(1) + ' Wh';
-                    document.getElementById('pwmPeakCurrent').textContent = data.pwmReport.peakCurrent.toFixed(2) + ' A';
-                    document.getElementById('pwmAvgCurrent').textContent = data.pwmReport.avgCurrent.toFixed(2) + ' A';
-                    
-                    const efficiency = data.pwmReport.efficiency || 0;
-                    document.getElementById('pwmEfficiency').textContent = efficiency.toFixed(1) + '%';
-                    document.getElementById('pwmEfficiencyBar').style.width = efficiency + '%';
-                    
-                    // Update efficiency bar color
-                    const efficiencyBar = document.getElementById('pwmEfficiencyBar');
-                    efficiencyBar.className = 'progress-bar';
-                    if (efficiency > 80) {
-                        efficiencyBar.classList.add('bg-success');
-                    } else if (efficiency > 60) {
-                        efficiencyBar.classList.add('bg-warning');
-                    } else {
-                        efficiencyBar.classList.add('bg-danger');
-                    }
-                    
-                    const modal = new bootstrap.Modal(document.getElementById('pwmReportModal'));
-                    modal.show();
-                })
-                .catch(error => {
-                    console.error('Error loading PWM report:', error);
-                });
-        }
-        
-        // Export PWM report
-        function exportPWMReport() {
-            // Create a CSV report
-            let csv = 'PWM Charging Report\n';
-            csv += 'Generated,' + new Date().toLocaleString() + '\n\n';
-            csv += 'Current Status\n';
-            csv += 'Current,' + document.getElementById('pwmCurrent').textContent + '\n';
-            csv += 'Voltage,' + document.getElementById('pwmVoltage').textContent + '\n';
-            csv += 'Power,' + document.getElementById('pwmPower').textContent + '\n\n';
-            csv += 'Daily Summary\n';
-            csv += 'Energy Today,' + document.getElementById('pwmEnergyToday').textContent + '\n';
-            csv += 'Peak Current,' + document.getElementById('pwmPeakCurrent').textContent + '\n';
-            csv += 'Average Current,' + document.getElementById('pwmAvgCurrent').textContent + '\n\n';
-            csv += 'Efficiency,' + document.getElementById('pwmEfficiency').textContent + '\n';
-            
-            // Create a download link
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'PWM_Charging_Report_' + new Date().toISOString().split('T')[0] + '.csv';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }
-        
-        // Utility functions
-        function calculateUptime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            return `${days}d ${hours}h ${minutes}m`;
-        }
-        
-        function formatBytes(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        }
-    </script>
-</body>
-</html>
-)";
-}
-
-String getStatusHTML() {
-  return R"(
+// Catatan: Ganti nama fungsi getStatusHTML() di kode Anda menjadi getSystemHTML() agar cocok
+// dengan yang Anda berikan sebelumnya, atau sesuaikan panggilan fungsinya di bagian web server.
+String getSystemHTML() { // Sebelumnya getStatusHTML
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6265,32 +5262,27 @@ String getStatusHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-info-circle"></i> System Status</h1>
-        
-        <!-- Real-time Status -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title"><i class="bi bi-activity"></i> Real-time Status</h5>
                         <div class="row" id="realtimeStatus">
-                            <!-- Real-time status will be loaded here -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Load Status -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <h3><i class="bi bi-power"></i> Load Status</h3>
             </div>
             <div id="loadStatus">
-                <!-- Load status will be loaded here -->
-            </div>
+                </div>
         </div>
-        
-        <!-- Prediction Status -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6300,7 +5292,7 @@ String getStatusHTML() {
                             <div class="col-md-3">
                                 <div class="d-flex justify-content-between">
                                     <span>Predicted Temperature</span>
-                                    <strong id="predictedTemp">--°C</strong>
+                                    <strong id="predictedTemp">--&deg;C</strong>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -6329,8 +5321,7 @@ String getStatusHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Emergency Status -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6375,27 +5366,27 @@ String getStatusHTML() {
     <script>
         // WebSocket connection for real-time updates
         const socket = new WebSocket('ws://' + window.location.hostname + ':81');
-        
+
         socket.onopen = function(event) {
             console.log('WebSocket connected');
         };
-        
+
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
             updateRealtimeStatus(data);
             updateLoadStatus(data);
             updateEmergencyStatus(data);
         };
-        
+
         // Load initial data
         document.addEventListener('DOMContentLoaded', function() {
             loadStatusData();
             loadPredictionData();
-            
+
             // Update prediction data every minute
             setInterval(loadPredictionData, 60000);
         });
-        
+
         // Load status data
         function loadStatusData() {
             fetch('/api/sensors')
@@ -6409,7 +5400,7 @@ String getStatusHTML() {
                     console.error('Error loading status data:', error);
                 });
         }
-        
+
         // Update real-time status
         function updateRealtimeStatus(data) {
             const container = document.getElementById('realtimeStatus');
@@ -6419,7 +5410,7 @@ String getStatusHTML() {
                         <i class="bi bi-thermometer-half text-danger me-2"></i>
                         <div>
                             <div>Temperature</div>
-                            <strong>${data.temperature.toFixed(1)}°C</strong>
+                            <strong>${data.temperature.toFixed(1)}&deg;C</strong>
                         </div>
                     </div>
                 </div>
@@ -6452,16 +5443,16 @@ String getStatusHTML() {
                 </div>
             `;
         }
-        
+
         // Update load status
         function updateLoadStatus(data) {
             const container = document.getElementById('loadStatus');
-            container.innerHTML = '';
-            
+            container.innerHTML = "";
+
             data.loads.forEach(load => {
                 const statusClass = load.status ? 'status-online' : 'status-offline';
                 const statusIcon = load.status ? 'check-circle' : 'x-circle';
-                
+
                 const element = document.createElement('div');
                 element.className = 'col-md-6 col-lg-4 mb-3';
                 element.innerHTML = `
@@ -6489,7 +5480,7 @@ String getStatusHTML() {
                 container.appendChild(element);
             });
         }
-        
+
         // Update emergency status
         function updateEmergencyStatus(data) {
             // This would need to be implemented with actual emergency status data
@@ -6497,7 +5488,7 @@ String getStatusHTML() {
             document.getElementById('thermostatStatus').textContent = 'Normal';
             document.getElementById('batteryEmergencyStatus').textContent = 'Normal';
         }
-        
+
         // Load prediction data
         function loadPredictionData() {
             fetch('/api/prediction')
@@ -6508,7 +5499,7 @@ String getStatusHTML() {
                     document.getElementById('predictedBatterySOC').textContent = data.predictedBatterySOC.toFixed(1) + '%';
                     document.getElementById('predictionConfidence').textContent = (data.confidence * 100).toFixed(1) + '%';
                     document.getElementById('predictionConfidenceBar').style.width = (data.confidence * 100) + '%';
-                    
+
                     // Update confidence bar color
                     const confidenceBar = document.getElementById('predictionConfidenceBar');
                     confidenceBar.className = 'progress-bar';
@@ -6527,11 +5518,13 @@ String getStatusHTML() {
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
-String getMaintenanceHTML() {
-  return R"(
+// Catatan: Ganti nama fungsi getStatusHTML() di kode Anda menjadi getMaintenanceHTML() agar cocok
+// dengan yang Anda berikan sebelumnya, atau sesuaikan panggilan fungsinya di bagian web server.
+String getMaintenanceHTML() { // Sebelumnya getStatusHTML kedua
+    return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6577,8 +5570,7 @@ String getMaintenanceHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-tools"></i> Maintenance</h1>
-        
-        <!-- Add Maintenance Activity -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6614,18 +5606,15 @@ String getMaintenanceHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Maintenance Activities -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <h3><i class="bi bi-list-check"></i> Maintenance Activities</h3>
             </div>
             <div id="maintenanceActivities">
-                <!-- Maintenance activities will be loaded here -->
-            </div>
+                </div>
         </div>
-        
-        <!-- Maintenance Schedule -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6685,8 +5674,7 @@ String getMaintenanceHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Maintenance History -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6740,22 +5728,22 @@ String getMaintenanceHTML() {
         document.addEventListener('DOMContentLoaded', function() {
             loadMaintenanceActivities();
         });
-        
+
         // Load maintenance activities
         function loadMaintenanceActivities() {
             fetch('/api/maintenance')
                 .then(response => response.json())
                 .then(data => {
                     const container = document.getElementById('maintenanceActivities');
-                    container.innerHTML = '';
-                    
+                    container.innerHTML = "";
+
                     data.activities.forEach(activity => {
                         const statusClass = activity.status === 'completed' ? 'status-completed' : 
-                                          activity.status === 'in_progress' ? 'status-in-progress' : 'status-pending';
-                        
+                                            activity.status === 'in_progress' ? 'status-in-progress' : 'status-pending';
+
                         const statusBadge = activity.status === 'completed' ? 'bg-success' : 
                                            activity.status === 'in_progress' ? 'bg-info' : 'bg-warning';
-                        
+
                         const element = document.createElement('div');
                         element.className = 'col-md-6 col-lg-4 mb-3';
                         element.innerHTML = `
@@ -6788,16 +5776,16 @@ String getMaintenanceHTML() {
                     console.error('Error loading maintenance activities:', error);
                 });
         }
-        
+
         // Add maintenance activity
         document.getElementById('addMaintenanceForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const activity = {
                 activityType: document.getElementById('activityType').value,
                 description: document.getElementById('activityDescription').value
             };
-            
+
             fetch('/api/maintenance', {
                 method: 'POST',
                 headers: {
@@ -6819,7 +5807,7 @@ String getMaintenanceHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         });
-        
+
         // Update activity status
         function updateActivityStatus(id, status) {
             // This would require an API endpoint to update activity status
@@ -6827,7 +5815,7 @@ String getMaintenanceHTML() {
             showNotification('Activity status updated to ' + status.replace('_', ' '), 'info');
             loadMaintenanceActivities(); // Refresh activities
         }
-        
+
         // Show notification
         function showNotification(message, type) {
             const notification = document.createElement('div');
@@ -6836,9 +5824,9 @@ String getMaintenanceHTML() {
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.insertBefore(notification, document.body.firstChild);
-            
+
             // Auto dismiss after 5 seconds
             setTimeout(() => {
                 notification.remove();
@@ -6847,11 +5835,12 @@ String getMaintenanceHTML() {
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
+
 String getSettingsHTML() {
-  return R"(
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6887,8 +5876,7 @@ String getSettingsHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-gear"></i> Settings</h1>
-        
-        <!-- Threshold Settings -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -6975,8 +5963,7 @@ String getSettingsHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Notification Settings -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7044,8 +6031,7 @@ String getSettingsHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- System Settings -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7108,8 +6094,7 @@ String getSettingsHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Security Settings -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7164,7 +6149,7 @@ String getSettingsHTML() {
         document.addEventListener('DOMContentLoaded', function() {
             loadConfiguration();
         });
-        
+
         // Load configuration
         function loadConfiguration() {
             fetch('/api/config')
@@ -7185,12 +6170,12 @@ String getSettingsHTML() {
                     document.getElementById('soilMoistureLowThreshold').value = data.soilMoistureLowThreshold;
                     document.getElementById('soilMoistureHighThreshold').value = data.soilMoistureHighThreshold;
                     document.getElementById('co2HighThreshold').value = data.co2HighThreshold;
-                    
+
                     // Load notification settings
                     document.getElementById('notificationMode').value = data.notificationMode;
                     document.getElementById('dndStart').value = data.dndStart;
                     document.getElementById('dndEnd').value = data.dndEnd;
-                    
+
                     // Load system settings
                     document.getElementById('encryptionEnabled').checked = data.encryptionEnabled;
                     document.getElementById('otaEnabled').checked = data.otaEnabled;
@@ -7202,11 +6187,11 @@ String getSettingsHTML() {
                     console.error('Error loading configuration:', error);
                 });
         }
-        
+
         // Save threshold settings
         document.getElementById('thresholdForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const config = {
                 exhaustFanThreshold: parseFloat(document.getElementById('exhaustFanThreshold').value),
                 pumpGudangThreshold: parseFloat(document.getElementById('pumpGudangThreshold').value),
@@ -7223,27 +6208,27 @@ String getSettingsHTML() {
                 soilMoistureHighThreshold: parseFloat(document.getElementById('soilMoistureHighThreshold').value),
                 co2HighThreshold: parseFloat(document.getElementById('co2HighThreshold').value)
             };
-            
+
             saveConfiguration(config);
         });
-        
+
         // Save notification settings
         document.getElementById('notificationForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const config = {
                 notificationMode: document.getElementById('notificationMode').value,
                 dndStart: document.getElementById('dndStart').value,
                 dndEnd: document.getElementById('dndEnd').value
             };
-            
+
             saveConfiguration(config);
         });
-        
+
         // Save system settings
         document.getElementById('systemForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const config = {
                 encryptionEnabled: document.getElementById('encryptionEnabled').checked,
                 otaEnabled: document.getElementById('otaEnabled').checked,
@@ -7251,23 +6236,23 @@ String getSettingsHTML() {
                 adaptiveEnabled: document.getElementById('adaptiveEnabled').checked,
                 pidEnabled: document.getElementById('pidEnabled').checked
             };
-            
+
             saveConfiguration(config);
         });
-        
+
         // Save security settings
         document.getElementById('securityForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const config = {
                 webUsername: document.getElementById('webUsername').value,
                 webPassword: document.getElementById('webPassword').value,
                 telegramPassword: document.getElementById('telegramPassword').value
             };
-            
+
             saveConfiguration(config);
         });
-        
+
         // Save configuration
         function saveConfiguration(config) {
             fetch('/api/config', {
@@ -7289,7 +6274,7 @@ String getSettingsHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         }
-        
+
         // Change WiFi settings
         function changeWiFiSettings() {
             const ssid = prompt('Enter new WiFi SSID:');
@@ -7301,7 +6286,7 @@ String getSettingsHTML() {
                 }
             }
         }
-        
+
         // Backup configuration
         function backupConfiguration() {
             fetch('/api/config')
@@ -7316,14 +6301,14 @@ String getSettingsHTML() {
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
-                    
+
                     showNotification('Configuration backed up successfully', 'success');
                 })
                 .catch(error => {
                     showNotification('Error backing up configuration: ' + error, 'danger');
                 });
         }
-        
+
         // Restore configuration
         function restoreConfiguration() {
             const input = document.createElement('input');
@@ -7345,7 +6330,7 @@ String getSettingsHTML() {
             };
             input.click();
         }
-        
+
         // Factory reset
         function factoryReset() {
             if (confirm('Are you sure you want to reset to factory settings? This will erase all configuration.')) {
@@ -7355,7 +6340,7 @@ String getSettingsHTML() {
                 }
             }
         }
-        
+
         // Show notification
         function showNotification(message, type) {
             const notification = document.createElement('div');
@@ -7364,9 +6349,9 @@ String getSettingsHTML() {
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.insertBefore(notification, document.body.firstChild);
-            
+
             // Auto dismiss after 5 seconds
             setTimeout(() => {
                 notification.remove();
@@ -7375,11 +6360,11 @@ String getSettingsHTML() {
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
 String getLogsHTML() {
-  return R"(
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7429,8 +6414,7 @@ String getLogsHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-file-text"></i> System Logs</h1>
-        
-        <!-- Log Filters -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7505,8 +6489,7 @@ String getLogsHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Log Statistics -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7542,16 +6525,14 @@ String getLogsHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Log Entries -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title"><i class="bi bi-list"></i> Log Entries</h5>
                         <div id="logEntries">
-                            <!-- Log entries will be loaded here -->
-                        </div>
+                            </div>
                         <div class="d-flex justify-content-between mt-3">
                             <div>
                                 <span id="logCount">0</span> entries shown
@@ -7577,15 +6558,15 @@ String getLogsHTML() {
         let filteredLogs = [];
         let currentPage = 0;
         const logsPerPage = 50;
-        
+
         // Load initial data
         document.addEventListener('DOMContentLoaded', function() {
             loadLogs();
-            
+
             // Auto-refresh logs every 30 seconds
             setInterval(loadLogs, 30000);
         });
-        
+
         // Load logs
         function loadLogs() {
             fetch('/api/logs')
@@ -7600,7 +6581,7 @@ String getLogsHTML() {
                     console.error('Error loading logs:', error);
                 });
         }
-        
+
         // Update log statistics
         function updateLogStatistics() {
             const stats = {
@@ -7610,11 +6591,11 @@ String getLogsHTML() {
                 error: 0,
                 critical: 0
             };
-            
+
             filteredLogs.forEach(log => {
                 stats[log.level.toLowerCase()]++;
             });
-            
+
             document.getElementById('debugCount').textContent = stats.debug;
             document.getElementById('infoCount').textContent = stats.info;
             document.getElementById('warningCount').textContent = stats.warning;
@@ -7622,21 +6603,21 @@ String getLogsHTML() {
             document.getElementById('criticalCount').textContent = stats.critical;
             document.getElementById('totalCount').textContent = filteredLogs.length;
         }
-        
+
         // Display logs
         function displayLogs() {
             const container = document.getElementById('logEntries');
-            container.innerHTML = '';
-            
+            container.innerHTML = "";
+
             const startIndex = currentPage * logsPerPage;
             const endIndex = Math.min(startIndex + logsPerPage, filteredLogs.length);
             const logsToShow = filteredLogs.slice(startIndex, endIndex);
-            
+
             logsToShow.forEach(log => {
                 const logClass = 'log-' + log.level.toLowerCase();
                 const levelIcon = getLevelIcon(log.level);
                 const levelColor = getLevelColor(log.level);
-                
+
                 const element = document.createElement('div');
                 element.className = 'log-entry ' + logClass + ' p-2 mb-2 border';
                 element.innerHTML = `
@@ -7653,10 +6634,10 @@ String getLogsHTML() {
                 `;
                 container.appendChild(element);
             });
-            
+
             document.getElementById('logCount').textContent = `${startIndex + 1}-${endIndex} of ${filteredLogs.length}`;
         }
-        
+
         // Get level icon
         function getLevelIcon(level) {
             switch (level) {
@@ -7668,7 +6649,7 @@ String getLogsHTML() {
                 default: return 'circle';
             }
         }
-        
+
         // Get level color
         function getLevelColor(level) {
             switch (level) {
@@ -7680,31 +6661,31 @@ String getLogsHTML() {
                 default: return 'text-muted';
             }
         }
-        
+
         // Apply filters
         function applyFilters() {
             const level = document.getElementById('logLevel').value;
             const source = document.getElementById('logSource').value;
             const timeRange = document.getElementById('logTimeRange').value;
             const search = document.getElementById('logSearch').value.toLowerCase();
-            
+
             filteredLogs = currentLogs.filter(log => {
                 // Filter by level
                 if (level !== 'all' && log.level !== level.toUpperCase()) {
                     return false;
                 }
-                
+
                 // Filter by source
                 if (source !== 'all' && log.source !== source) {
                     return false;
                 }
-                
+
                 // Filter by time range
                 if (timeRange !== 'all') {
                     const logTime = new Date(log.timestamp);
                     const now = new Date();
                     const timeDiff = now - logTime;
-                    
+
                     switch (timeRange) {
                         case '1h':
                             if (timeDiff > 3600000) return false;
@@ -7723,47 +6704,47 @@ String getLogsHTML() {
                             break;
                     }
                 }
-                
+
                 // Filter by search
                 if (search && !log.message.toLowerCase().includes(search)) {
                     return false;
                 }
-                
+
                 return true;
             });
-            
+
             currentPage = 0;
             updateLogStatistics();
             displayLogs();
         }
-        
+
         // Clear filters
         function clearFilters() {
             document.getElementById('logLevel').value = 'all';
             document.getElementById('logSource').value = 'all';
             document.getElementById('logTimeRange').value = '24h';
             document.getElementById('logSearch').value = '';
-            
+
             filteredLogs = [...currentLogs];
             currentPage = 0;
             updateLogStatistics();
             displayLogs();
         }
-        
+
         // Refresh logs
         function refreshLogs() {
             loadLogs();
         }
-        
+
         // Export logs
         function exportLogs() {
             // Create a CSV report
             let csv = 'Timestamp,Level,Source,Message\n';
-            
+
             filteredLogs.forEach(log => {
                 csv += `"${new Date(log.timestamp).toLocaleString()}","${log.level}","${log.source}","${log.message}"\n`;
             });
-            
+
             // Create a download link
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
@@ -7775,7 +6756,7 @@ String getLogsHTML() {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         }
-        
+
         // Clear logs
         function clearLogs() {
             if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
@@ -7784,7 +6765,7 @@ String getLogsHTML() {
                 loadLogs();
             }
         }
-        
+
         // Load older logs
         function loadOlderLogs() {
             if (currentPage > 0) {
@@ -7792,7 +6773,7 @@ String getLogsHTML() {
                 displayLogs();
             }
         }
-        
+
         // Load newer logs
         function loadNewerLogs() {
             const maxPage = Math.ceil(filteredLogs.length / logsPerPage) - 1;
@@ -7801,7 +6782,7 @@ String getLogsHTML() {
                 displayLogs();
             }
         }
-        
+
         // Show notification
         function showNotification(message, type) {
             const notification = document.createElement('div');
@@ -7810,9 +6791,9 @@ String getLogsHTML() {
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.insertBefore(notification, document.body.firstChild);
-            
+
             // Auto dismiss after 5 seconds
             setTimeout(() => {
                 notification.remove();
@@ -7821,11 +6802,11 @@ String getLogsHTML() {
     </script>
 </body>
 </html>
-)";
+)=====";
 }
 
 String getPredictionHTML() {
-  return R"(
+  return R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7870,22 +6851,19 @@ String getPredictionHTML() {
 
     <div class="container mt-4">
         <h1><i class="bi bi-cpu"></i> Prediction System</h1>
-        
-        <!-- Current Predictions -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
                         <h5 class="card-title"><i class="bi bi-graph-up-arrow"></i> Current Predictions</h5>
                         <div class="row" id="currentPredictions">
-                            <!-- Current predictions will be loaded here -->
-                        </div>
+                            </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Prediction History -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7906,16 +6884,14 @@ String getPredictionHTML() {
                                     </tr>
                                 </thead>
                                 <tbody id="predictionHistory">
-                                    <!-- Prediction history will be loaded here -->
-                                </tbody>
+                                    </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Prediction Settings -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -7973,8 +6949,7 @@ String getPredictionHTML() {
                 </div>
             </div>
         </div>
-        
-        <!-- Model Performance -->
+
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
@@ -8027,11 +7002,11 @@ String getPredictionHTML() {
             loadPredictionHistory();
             loadPredictionSettings();
             loadModelPerformance();
-            
+
             // Update data every 5 minutes
             setInterval(loadPredictionData, 300000);
         });
-        
+
         // Load prediction data
         function loadPredictionData() {
             fetch('/api/prediction')
@@ -8043,19 +7018,19 @@ String getPredictionHTML() {
                     console.error('Error loading prediction data:', error);
                 });
         }
-        
+
         // Display current predictions
         function displayCurrentPredictions(data) {
             const container = document.getElementById('currentPredictions');
             const confidenceClass = data.confidence > 0.8 ? 'confidence-high' : 
                                    data.confidence > 0.6 ? 'confidence-medium' : 'confidence-low';
-            
+
             container.innerHTML = `
                 <div class="col-md-3 mb-3">
                     <div class="card prediction-card ${confidenceClass}">
                         <div class="card-body">
                             <h6 class="card-title">Temperature</h6>
-                            <div class="h3">${data.predictedTemp.toFixed(1)}°C</div>
+                            <div class="h3">${data.predictedTemp.toFixed(1)}&deg;C</div>
                             <div class="progress mt-2">
                                 <div class="progress-bar" style="width: ${data.confidence * 100}%"></div>
                             </div>
@@ -8101,7 +7076,7 @@ String getPredictionHTML() {
                 </div>
             `;
         }
-        
+
         // Load prediction history
         function loadPredictionHistory() {
             // This would require an API endpoint to get prediction history
@@ -8113,19 +7088,19 @@ String getPredictionHTML() {
                 { date: '2023-11-04', predictedTemp: 25.2, actualTemp: 25.8, predictedHumidity: 85.5, actualHumidity: 85.0, confidence: 0.79 },
                 { date: '2023-11-05', predictedTemp: 26.5, actualTemp: 26.2, predictedHumidity: 83.5, actualHumidity: 83.8, confidence: 0.91 }
             ];
-            
+
             const tbody = document.getElementById('predictionHistory');
-            tbody.innerHTML = '';
-            
+            tbody.innerHTML = "";
+
             history.forEach(entry => {
                 const tempAccuracy = (100 - Math.abs(entry.predictedTemp - entry.actualTemp) * 10).toFixed(1);
                 const humidityAccuracy = (100 - Math.abs(entry.predictedHumidity - entry.actualHumidity) * 5).toFixed(1);
-                
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${entry.date}</td>
-                    <td>${entry.predictedTemp.toFixed(1)}°C</td>
-                    <td>${entry.actualTemp.toFixed(1)}°C</td>
+                    <td>${entry.predictedTemp.toFixed(1)}&deg;C</td>
+                    <td>${entry.actualTemp.toFixed(1)}&deg;C</td>
                     <td><span class="badge bg-${tempAccuracy > 90 ? 'success' : tempAccuracy > 80 ? 'warning' : 'danger'}">${tempAccuracy}%</span></td>
                     <td>${entry.predictedHumidity.toFixed(1)}%</td>
                     <td>${entry.actualHumidity.toFixed(1)}%</td>
@@ -8135,7 +7110,7 @@ String getPredictionHTML() {
                 tbody.appendChild(row);
             });
         }
-        
+
         // Load prediction settings
         function loadPredictionSettings() {
             fetch('/api/config')
@@ -8148,7 +7123,7 @@ String getPredictionHTML() {
                     console.error('Error loading prediction settings:', error);
                 });
         }
-        
+
         // Load model performance
         function loadModelPerformance() {
             // This would require an API endpoint to get model performance
@@ -8157,7 +7132,7 @@ String getPredictionHTML() {
             document.getElementById('precisionScore').textContent = '85.2%';
             document.getElementById('recallScore').textContent = '89.1%';
             document.getElementById('f1Score').textContent = '87.1%';
-            
+
             // Initialize performance chart
             const ctx = document.getElementById('performanceChart').getContext('2d');
             new Chart(ctx, {
@@ -8185,21 +7160,21 @@ String getPredictionHTML() {
                 }
             });
         }
-        
+
         // Update confidence value display
         document.getElementById('confidenceThreshold').addEventListener('input', function() {
             document.getElementById('confidenceValue').textContent = this.value + '%';
         });
-        
+
         // Save prediction settings
         document.getElementById('predictionForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const config = {
                 predictiveEnabled: document.getElementById('predictiveEnabled').checked,
                 adaptiveEnabled: document.getElementById('adaptiveEnabled').checked
             };
-            
+
             fetch('/api/config', {
                 method: 'POST',
                 headers: {
@@ -8219,18 +7194,18 @@ String getPredictionHTML() {
                 showNotification('Error: ' + error, 'danger');
             });
         });
-        
+
         // Train model
         function trainModel() {
             showNotification('Model training started. This may take a few minutes...', 'info');
-            
+
             // This would require an API endpoint to train the model
             setTimeout(() => {
                 showNotification('Model training completed successfully', 'success');
                 loadModelPerformance();
             }, 5000);
         }
-        
+
         // Reset model
         function resetModel() {
             if (confirm('Are you sure you want to reset the prediction model? This will clear all learned data.')) {
@@ -8239,7 +7214,7 @@ String getPredictionHTML() {
                 loadModelPerformance();
             }
         }
-        
+
         // Show notification
         function showNotification(message, type) {
             const notification = document.createElement('div');
@@ -8248,9 +7223,9 @@ String getPredictionHTML() {
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
-            
+
             document.body.insertBefore(notification, document.body.firstChild);
-            
+
             // Auto dismiss after 5 seconds
             setTimeout(() => {
                 notification.remove();
@@ -8259,8 +7234,12 @@ String getPredictionHTML() {
     </script>
 </body>
 </html>
-)";
+)=====";
 }
+
+
+// --- AKHIR BAGIAN KODE HTML ---
+
 
 //============================================================================
 // KALIBRASI INA219 UNTUK 100A
