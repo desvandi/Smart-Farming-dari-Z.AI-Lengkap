@@ -26,45 +26,17 @@
 #include <SPI.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "freertos/task.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <FreeRTOS.h>
+#include <task.h>
+#include <semphr.h>
 #include <Update.h>
 #include <WebSocketsServer.h>
 #include <AES.h>
 #include <PID_v1.h>
 #include <ArduinoOTA.h>
 #include <esp_task_wdt.h>
-
-
-// Function Prototypes
-void logMessage(String level, String message, String source);
-void logMessage(String level, String message, String source);
-void addMaintenanceActivity(MaintenanceActivity activity); // Pastikan struct MaintenanceActivity didefinisikan sebelumnya
-void sendTelegramMessage(String message);
-void initializeWiFi();
-void initializeCamWiFi();
-void initializePins();
-String readGeminiAPIKey();
-void initializeSensors();
-void initializeFuzzyLogic();
-void initializeWebServer();
-void initializeLoadStatus();
-void initializeSchedules();
-void initializeBatteryData();
-void initializeEnergyData();
-void controlLoad(String loadName, bool status); // Sesuaikan tipe data jika perlu
-void updateConfigFromWebSocket(DynamicJsonDocument doc); // Sesuaikan tipe data jika perlu
-void sensorTask(void *pvParameters); // Prototipe untuk task RTOS
-void controlTask(void *pvParameters);
-void webSocketTask(void *pvParameters);
-void scheduleTask(void *pvParameters);
-void loggingTask(void *pvParameters);
-void predictionTask(void *pvParameters);
-void adaptiveTask(void *pvParameters);
 
 //============================================================================
 // DEFINISI REGISTER INA219
@@ -294,7 +266,7 @@ PID tempPID(&temperatureGudang, &tempPIDOutput, &tempSetpoint, 2, 5, 1, DIRECT);
 PID humidityPID(&humidityGudang, &humidityPIDOutput, &humiditySetpoint, 2, 5, 1, DIRECT);
 
 // Enkripsi AES
-AES aesLib;
+AES128 aes128;
 
 // Struktur data untuk status beban
 struct LoadStatus {
@@ -452,16 +424,6 @@ String currentMessage = "";
 String chatId = "";
 String messageId = "";
 
-
-// Variabel untuk PID
-double temperatureGudang;     // Input - Sesuaikan jika nama variabel sensor berbeda
-double tempPIDOutput;       // Output
-double tempSetpoint = 25.0; // Setpoint awal (contoh, sesuaikan)
-
-double humidityGudang;        // Input - Sesuaikan jika nama variabel sensor berbeda
-double humidityPIDOutput;     // Output
-double humiditySetpoint = 80.0; // Setpoint awal (contoh, sesuaikan)
-
 // Variabel untuk sensor
 float temperatureGudang = 0;
 float humidityGudang = 0;
@@ -535,6 +497,12 @@ const float ocvTable[][2] = {
   {2.90, 0}    // 0% @ 2.90V
 };
 const int ocvTableSize = sizeof(ocvTable) / sizeof(ocvTable[0]);
+
+// Variabel PID
+double tempSetpoint = 26.0;
+double humiditySetpoint = 85.0;
+double tempPIDOutput = 0;
+double humidityPIDOutput = 0;
 
 // Variabel untuk non-blocking delays
 unsigned long previousMillis[20] = {0};
@@ -611,7 +579,7 @@ void initializeEncryption() {
     logMessage("INFO", "Generated new encryption key", "SECURITY");
   }
   
-  aesLib.setKey(key, 16);
+  aes128.setKey(key, 16);
   logMessage("INFO", "Encryption initialized", "SECURITY");
 }
 
@@ -632,7 +600,7 @@ String encryptData(String data) {
   }
   
   for (int i = 0; i < data.length(); i += 16) {
-    aesLib.encryptBlock(encrypted + i, plain + i);
+    aes128.encryptBlock(encrypted + i, plain + i);
   }
   
   String result = "";
@@ -667,7 +635,7 @@ String decryptData(String encryptedData) {
   
   byte decrypted[partCount];
   for (int i = 0; i < partCount; i += 16) {
-    aesLib.decryptBlock(decrypted + i, encrypted + i);
+    aes128.decryptBlock(decrypted + i, encrypted + i);
   }
   
   // Remove padding
@@ -845,7 +813,7 @@ void updateComponentHealth() {
     
     // Hitung health score berdasarkan lifetime dan performa
     float lifetimeRatio = comp.currentLifetime / comp.expectedLifetime;
-    comp.healthScore = max(0.0f, 100.0f * (1.0f - lifetimeRatio));
+    comp.healthScore = max(0, 100.0 * (1.0 - lifetimeRatio));
     
     // Deteksi masalah khusus untuk setiap komponen
     if (comp.componentName == "Battery") {
@@ -1208,17 +1176,6 @@ void initializePWA() {
   logMessage("INFO", "PWA initialized", "SYSTEM");
 }
 
-
-//============================================================================
-// DEKLARASI TAMBAHAN
-//============================================================================
-
-
-void sendTelegramMessage(String message);
-void loadConfiguration();
-void readAllSensors();
-
-
 //============================================================================
 // SETUP - INISIALISASI SISTEM
 //============================================================================
@@ -1230,21 +1187,14 @@ void setup() {
   // Inisialisasi random seed
   randomSeed(analogRead(0));
   
-  // Inisialisasi semaphore dan queue - PERBAIKAN
+  // Inisialisasi semaphore dan queue
   sensorMutex = xSemaphoreCreateMutex();
   configMutex = xSemaphoreCreateMutex();
   logMutex = xSemaphoreCreateMutex();
-
-  // PERBAIKAN: Definisikan ukuran queue dengan benar
-  #define SENSOR_QUEUE_SIZE 10
-  #define SENSOR_DATA_SIZE 15
-  sensorQueue = xQueueCreate(SENSOR_QUEUE_SIZE, sizeof(float) * SENSOR_DATA_SIZE);
-    
-  #define CONTROL_QUEUE_SIZE 5
-  controlQueue = xQueueCreate(CONTROL_QUEUE_SIZE, sizeof(ControlCommand));
-    
-  #define NOTIFICATION_QUEUE_SIZE 10
-  notificationQueue = xQueueCreate(NOTIFICATION_QUEUE_SIZE, sizeof(Notification));
+  
+  sensorQueue = xQueueCreate(10, sizeof(float) * 15); // 15 sensor values
+  controlQueue = xQueueCreate(5, sizeof(String) * 2); // Command and parameter
+  notificationQueue = xQueueCreate(10, sizeof(String) * 3); // Type, message, recipient
   
   // Inisialisasi SPIFFS
   if (!SPIFFS.begin(true)) {
@@ -1352,27 +1302,27 @@ void setup() {
   xTaskCreatePinnedToCore(
     sensorTask,          // Fungsi task
     "SensorTask",        // Nama task
-    8192,                // Stack size (ditingkatkan untuk ESP32)
+    4096,                // Stack size
     NULL,                // Parameter
-    1,                   // Priority (1-25, dengan 25 tertinggi)
+    2,                   // Priority
     &sensorTaskHandle,   // Task handle
-    0                    // Core (0 atau 1)
+    0                    // Core
   );
   
   xTaskCreatePinnedToCore(
     controlTask,
     "ControlTask",
-    8192,
+    4096,
     NULL,
-    2,                   // Priority lebih tinggi
+    3,
     &controlTaskHandle,
     1
   );
-
+  
   xTaskCreatePinnedToCore(
     communicationTask,
     "CommunicationTask",
-    16384,               // Stack size lebih besar untuk komunikasi
+    8192,
     NULL,
     1,
     &communicationTaskHandle,
@@ -1432,46 +1382,43 @@ void setup() {
 // TASK FREE-RTOS - SENSOR
 //============================================================================
 void sensorTask(void *pvParameters) {
-    while (1) {
-        // Feed watchdog
-        feedWatchdog();
-        
-        // Baca sensor
-        float sensorValues[15];
-        
-        if (xSemaphoreTake(sensorMutex, portMAX_DELAY)) {
-            // Baca semua sensor
-            readAllSensors();
-            
-            // Simpan nilai sensor ke array
-            sensorValues[0] = temperatureGudang;
-            sensorValues[1] = humidityGudang;
-            sensorValues[2] = lightGudang;
-            sensorValues[3] = co2Gudang;
-            sensorValues[4] = soilMoisture;
-            sensorValues[5] = pressureKebun;
-            sensorValues[6] = temperatureKebun;
-            sensorValues[7] = lightKebun;
-            sensorValues[8] = waterPressure;
-            sensorValues[9] = batteryVoltage;
-            sensorValues[10] = currentMPPT;
-            sensorValues[11] = currentPWM;
-            sensorValues[12] = currentLoad;
-            sensorValues[13] = voltageMPPT;
-            sensorValues[14] = voltagePWM;
-            
-            xSemaphoreGive(sensorMutex);
-            
-            // Kirim data ke queue
-            xQueueSend(sensorQueue, sensorValues, portMAX_DELAY);
-        }
-        
-        // Delay non-blocking untuk FreeRTOS
-        vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL));
+  while (1) {
+    // Feed watchdog
+    feedWatchdog();
+    
+    // Baca sensor
+    float sensorValues[15];
+    
+    if (xSemaphoreTake(sensorMutex, portMAX_DELAY)) {
+      // Baca semua sensor
+      readAllSensors();
+      
+      // Simpan nilai sensor ke array
+      sensorValues[0] = temperatureGudang;
+      sensorValues[1] = humidityGudang;
+      sensorValues[2] = lightGudang;
+      sensorValues[3] = co2Gudang;
+      sensorValues[4] = soilMoisture;
+      sensorValues[5] = pressureKebun;
+      sensorValues[6] = temperatureKebun;
+      sensorValues[7] = lightKebun;
+      sensorValues[8] = waterPressure;
+      sensorValues[9] = batteryVoltage;
+      sensorValues[10] = currentMPPT;
+      sensorValues[11] = currentPWM;
+      sensorValues[12] = currentLoad;
+      sensorValues[13] = voltageMPPT;
+      sensorValues[14] = voltagePWM;
+      
+      xSemaphoreGive(sensorMutex);
+      
+      // Kirim data ke queue
+      xQueueSend(sensorQueue, sensorValues, portMAX_DELAY);
     }
     
-    // Hapus task jika keluar dari loop (seharusnya tidak terjadi)
-    vTaskDelete(NULL);
+    // Delay non-blocking
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_READ_INTERVAL));
+  }
 }
 
 //============================================================================
@@ -2080,10 +2027,10 @@ void processFuzzyControl() {
   fuzzy->fuzzify();
   
   // Dapatkan output
-  float durasiKipas = fuzzy->fuzzify(1);
-  float durasiPompaGudang = fuzzy->fuzzify(2);
-  float durasiPompaKebun = fuzzy->fuzzify(3);
-  float durasiHumidifier = fuzzy->fuzzify(4);
+  float durasiKipas = fuzzy->getOutput(1);
+  float durasiPompaGudang = fuzzy->getOutput(2);
+  float durasiPompaKebun = fuzzy->getOutput(3);
+  float durasiHumidifier = fuzzy->getOutput(4);
   
   // Kontrol beban berdasarkan output fuzzy
   // Durasi dalam detik, konversi ke milidetik
@@ -3341,7 +3288,7 @@ void handleStatus() {
     return server.requestAuthentication();
   }
   
-  String html = getMaintenanceHTML();
+  String html = getStatusHTML();
   server.send(200, "text/html", html);
 }
 
@@ -4066,11 +4013,66 @@ void handleLogin() {
 }
 
 //============================================================================
+// FUNGSI UNTUK KOMUNIKASI DENGAN ESP32-CAM
+//============================================================================
+// Tambahkan di ESP32 Main
+void handleCamEvent() {
+  // Endpoint untuk menerima event dari ESP32-CAM
+  server.on("/cam_event", HTTP_POST, []() {
+    String body = server.arg("plain");
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, body);
+    
+    if (!error) {
+      String event = doc["event"];
+      String data = doc["data"];
+      String camIP = doc["cam_ip"];
+      
+      if (event == "MOTION_DETECTED") {
+        sendTelegramMessage("📸 Motion detected by CAM: " + data);
+      } else if (event == "CAM_CONNECTED") {
+        sendTelegramMessage("📹 CAM connected: " + data);
+      } else if (event == "CAM_STARTED") {
+        sendTelegramMessage("🚀 CAM started: " + data);
+      }
+      
+      server.send(200, "text/plain", "OK");
+    }
+  });
+}
+
+
+//============================================================================
+// FUNGSI UNTUK MENGIRIM PERINTAH KE ESP32-CAM
+//============================================================================
+void sendCommandToCAM(String command) {
+  HTTPClient http;
+  String url = "http://192.168.1.101/" + command; // IP ESP32-CAM
+  
+  http.begin(url);
+  int httpCode = http.GET();
+  
+  if (httpCode == HTTP_CODE_OK) {
+    String response = http.getString();
+    Serial.println("CAM response: " + response);
+  } else {
+    Serial.println("Failed to send command to CAM");
+  }
+  
+  http.end();
+}
+
+// Contoh penggunaan:
+// sendCommandToCAM("capture");    // Ambil gambar
+// sendCommandToCAM("pir_trigger"); // Trigger PIR
+// sendCommandToCAM("status");     // Cek status
+
+
+//============================================================================
 // HTML TEMPLATES
 //============================================================================
-
 String getIndexHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
@@ -4143,12 +4145,11 @@ String getIndexHTML() {
 <p class="p4"><span class="s5">System started successfully<span class="Apple-converted-space"> </span></span></p>
 </body>
 </html>
-
-)=====";
+)====";
 }
 
 String getGraphsHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4431,11 +4432,11 @@ String getGraphsHTML() {
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 String getControlHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5242,13 +5243,13 @@ String getControlHTML() {
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 // Catatan: Ganti nama fungsi getStatusHTML() di kode Anda menjadi getSystemHTML() agar cocok
 // dengan yang Anda berikan sebelumnya, atau sesuaikan panggilan fungsinya di bagian web server.
 String getSystemHTML() { // Sebelumnya getStatusHTML
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5549,13 +5550,13 @@ String getSystemHTML() { // Sebelumnya getStatusHTML
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 // Catatan: Ganti nama fungsi getStatusHTML() di kode Anda menjadi getMaintenanceHTML() agar cocok
 // dengan yang Anda berikan sebelumnya, atau sesuaikan panggilan fungsinya di bagian web server.
 String getMaintenanceHTML() { // Sebelumnya getStatusHTML kedua
-    return R"=====(
+    return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5866,12 +5867,12 @@ String getMaintenanceHTML() { // Sebelumnya getStatusHTML kedua
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 
 String getSettingsHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6391,11 +6392,11 @@ String getSettingsHTML() {
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 String getLogsHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6833,11 +6834,11 @@ String getLogsHTML() {
     </script>
 </body>
 </html>
-)=====";
+)====";
 }
 
 String getPredictionHTML() {
-  return R"=====(
+  return R"====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7265,87 +7266,7 @@ String getPredictionHTML() {
     </script>
 </body>
 </html>
-)=====";
-}
-
-
-// --- AKHIR BAGIAN KODE HTML ---
-
-
-//============================================================================
-// KALIBRASI INA219 UNTUK 100A
-//============================================================================
-void configureINA219_100A(Adafruit_INA219 &ina) {
-  // Set shunt resistor value to 0.001 ohm (1 mOhm) for 100A
-  // Hitung nilai kalibrasi untuk 100A dengan shunt 0.001 ohm
-  uint32_t calibrationValue = 13421; // Dihitung sebelumnya
-  
-  // Set kalibrasi
-  ina.wireWriteRegister(INA219_REG_CALIBRATION, calibrationValue);
-  
-  // Set konfigurasi untuk 100A
-  uint16_t config = INA219_CONFIG_BVOLTAGERANGE_32V |
-                    INA219_CONFIG_GAIN_8_320MV |
-                    INA219_CONFIG_BADCRES_12BIT |
-                    INA219_CONFIG_SADCRES_12BIT_1S_532US |
-                    INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
-  
-  ina.wireWriteRegister(INA219_REG_CONFIG, config);
-}
-
-//============================================================================
-// MEMUAT KONFIGURASI
-//============================================================================
-void loadConfiguration() {
-  // Muat konfigurasi dari EEPROM
-  EEPROM.get(0, config);
-  
-  // Periksa apakah konfigurasi valid
-  if (config.exhaustFanThreshold < 100 || config.exhaustFanThreshold > 2000) {
-    // Konfigurasi tidak valid, gunakan default
-    config.exhaustFanThreshold = 500.0;
-    config.pumpGudangThreshold = 800.0;
-    config.humidifierThreshold = 200.0;
-    config.pumpKebunThreshold = 800.0;
-    config.lampJalanThreshold = 100.0;
-    config.lampGudangThreshold = 100.0;
-    config.lampKebunThreshold = 100.0;
-    config.tempHighThreshold = 29.0;
-    config.tempNormalThreshold = 26.0;
-    config.humidityLowThreshold = 80.0;
-    config.humidityHighThreshold = 90.0;
-    config.soilMoistureLowThreshold = 50.0;
-    config.soilMoistureHighThreshold = 70.0;
-    config.co2HighThreshold = 0.03;
-    config.batteryLowThreshold = 12.0;
-    config.batteryCriticalThreshold = 11.5;
-    config.batteryEmergencyThreshold = 11.0;
-    strcpy(config.telegramPassword, "admin");
-    strcpy(config.notificationMode, "all");
-    strcpy(config.dndStart, "22:00");
-    strcpy(config.dndEnd, "07:00");
-    config.operationMode = MODE_LOCAL;
-    config.encryptionEnabled = true;
-    config.otaEnabled = true;
-    config.predictiveEnabled = true;
-    config.adaptiveEnabled = true;
-    config.pidEnabled = true;
-    strcpy(config.geminiApiKey, "");
-    strcpy(config.webUsername, "admin");
-    strcpy(config.webPassword, "admin");
-    
-    // Simpan konfigurasi default
-    saveConfiguration();
-  }
-  
-  // Baca siklus baterai dari EEPROM
-  EEPROM.get(ADDR_BATTERY_CYCLES, batteryData.cycles);
-  if (batteryData.cycles < 995) {
-    batteryData.cycles = 995; // Mulai dari 995
-  }
-  
-  Serial.println("Configuration loaded");
-  logMessage("INFO", "Configuration loaded", "SYSTEM");
+)====";
 }
 
 //============================================================================
