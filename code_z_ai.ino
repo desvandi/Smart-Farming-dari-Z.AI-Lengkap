@@ -39,6 +39,33 @@
 #include <ArduinoOTA.h>
 #include <esp_task_wdt.h>
 
+
+// Function Prototypes
+void logMessage(String level, String message, String source);
+void logMessage(String level, String message, String source);
+void addMaintenanceActivity(MaintenanceActivity activity); // Pastikan struct MaintenanceActivity didefinisikan sebelumnya
+void sendTelegramMessage(String message);
+void initializeWiFi();
+void initializeCamWiFi();
+void initializePins();
+String readGeminiAPIKey();
+void initializeSensors();
+void initializeFuzzyLogic();
+void initializeWebServer();
+void initializeLoadStatus();
+void initializeSchedules();
+void initializeBatteryData();
+void initializeEnergyData();
+void controlLoad(String loadName, bool status); // Sesuaikan tipe data jika perlu
+void updateConfigFromWebSocket(DynamicJsonDocument doc); // Sesuaikan tipe data jika perlu
+void sensorTask(void *pvParameters); // Prototipe untuk task RTOS
+void controlTask(void *pvParameters);
+void webSocketTask(void *pvParameters);
+void scheduleTask(void *pvParameters);
+void loggingTask(void *pvParameters);
+void predictionTask(void *pvParameters);
+void adaptiveTask(void *pvParameters);
+
 //============================================================================
 // DEFINISI REGISTER INA219
 //============================================================================
@@ -267,7 +294,7 @@ PID tempPID(&temperatureGudang, &tempPIDOutput, &tempSetpoint, 2, 5, 1, DIRECT);
 PID humidityPID(&humidityGudang, &humidityPIDOutput, &humiditySetpoint, 2, 5, 1, DIRECT);
 
 // Enkripsi AES
-AES128 aes128;
+AES aesLib;
 
 // Struktur data untuk status beban
 struct LoadStatus {
@@ -425,6 +452,16 @@ String currentMessage = "";
 String chatId = "";
 String messageId = "";
 
+
+// Variabel untuk PID
+double temperatureGudang;     // Input - Sesuaikan jika nama variabel sensor berbeda
+double tempPIDOutput;       // Output
+double tempSetpoint = 25.0; // Setpoint awal (contoh, sesuaikan)
+
+double humidityGudang;        // Input - Sesuaikan jika nama variabel sensor berbeda
+double humidityPIDOutput;     // Output
+double humiditySetpoint = 80.0; // Setpoint awal (contoh, sesuaikan)
+
 // Variabel untuk sensor
 float temperatureGudang = 0;
 float humidityGudang = 0;
@@ -498,12 +535,6 @@ const float ocvTable[][2] = {
   {2.90, 0}    // 0% @ 2.90V
 };
 const int ocvTableSize = sizeof(ocvTable) / sizeof(ocvTable[0]);
-
-// Variabel PID
-double tempSetpoint = 26.0;
-double humiditySetpoint = 85.0;
-double tempPIDOutput = 0;
-double humidityPIDOutput = 0;
 
 // Variabel untuk non-blocking delays
 unsigned long previousMillis[20] = {0};
@@ -580,7 +611,7 @@ void initializeEncryption() {
     logMessage("INFO", "Generated new encryption key", "SECURITY");
   }
   
-  aes128.setKey(key, 16);
+  aesLib.setKey(key, 16);
   logMessage("INFO", "Encryption initialized", "SECURITY");
 }
 
@@ -601,7 +632,7 @@ String encryptData(String data) {
   }
   
   for (int i = 0; i < data.length(); i += 16) {
-    aes128.encryptBlock(encrypted + i, plain + i);
+    aesLib.encryptBlock(encrypted + i, plain + i);
   }
   
   String result = "";
@@ -636,7 +667,7 @@ String decryptData(String encryptedData) {
   
   byte decrypted[partCount];
   for (int i = 0; i < partCount; i += 16) {
-    aes128.decryptBlock(decrypted + i, encrypted + i);
+    aesLib.decryptBlock(decrypted + i, encrypted + i);
   }
   
   // Remove padding
@@ -814,7 +845,7 @@ void updateComponentHealth() {
     
     // Hitung health score berdasarkan lifetime dan performa
     float lifetimeRatio = comp.currentLifetime / comp.expectedLifetime;
-    comp.healthScore = max((float)0, 100.0 * (1.0 - lifetimeRatio));
+    comp.healthScore = max(0.0f, 100.0f * (1.0f - lifetimeRatio));
     
     // Deteksi masalah khusus untuk setiap komponen
     if (comp.componentName == "Battery") {
@@ -1326,7 +1357,7 @@ void setup() {
     1,                   // Priority (1-25, dengan 25 tertinggi)
     &sensorTaskHandle,   // Task handle
     0                    // Core (0 atau 1)
-  };
+  );
   
   xTaskCreatePinnedToCore(
     controlTask,
