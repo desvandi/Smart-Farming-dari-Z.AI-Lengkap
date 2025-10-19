@@ -28,15 +28,17 @@
 #include <WiFiUdp.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <FreeRTOS.h>
-#include <task.h>
-#include <semphr.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
 #include <Update.h>
 #include <WebSocketsServer.h>
 #include <AES.h>
 #include <PID_v1.h>
 #include <ArduinoOTA.h>
 #include <esp_task_wdt.h>
+#include <ESPAsyncWebServer.h> // Pastikan library ini sudah di-include di awal file
+#include <AsyncTCP.h>          // Pastikan library ini sudah di-include di awal file
 
 //============================================================================
 // DEFINISI REGISTER INA219
@@ -423,6 +425,47 @@ String geminiResponse = "";
 String currentMessage = "";
 String chatId = "";
 String messageId = "";
+
+//============================================================================
+// Global Variables for Web Server & WebSocket
+//============================================================================
+AsyncWebServer server(80);         // Buat objek server di port 80
+AsyncWebSocket ws("/ws");          // Buat objek WebSocket di path /ws
+
+//============================================================================
+// Deklarasi Fungsi Handler (jika belum ada di atas)
+//============================================================================
+void handleRoot(AsyncWebServerRequest *request);
+void handleGraphs(AsyncWebServerRequest *request);
+void handleControl(AsyncWebServerRequest *request);
+void handleSystem(AsyncWebServerRequest *request); // Akan memanggil getSystemHTML()
+void handleStatus(AsyncWebServerRequest *request); // Perhatikan: Ini mungkin duplikat? Jika ya, hapus salah satu. Jika berbeda, pastikan path unik.
+void handleMaintenance(AsyncWebServerRequest *request); // Akan memanggil getMaintenanceHTML()
+void handleSettings(AsyncWebServerRequest *request);
+void handleLogs(AsyncWebServerRequest *request);
+void handlePrediction(AsyncWebServerRequest *request);
+void handleApiSensors(AsyncWebServerRequest *request);
+void handleApiControl(AsyncWebServerRequest *request);
+void handleApiConfigGet(AsyncWebServerRequest *request);
+void handleApiConfigPost(AsyncWebServerRequest *request);
+void handleApiRulesGet(AsyncWebServerRequest *request);
+void handleApiRulesPost(AsyncWebServerRequest *request);
+void handleApiRulesDelete(AsyncWebServerRequest *request);
+void handleApiSchedulesGet(AsyncWebServerRequest *request);
+void handleApiSchedulesPost(AsyncWebServerRequest *request);
+void handleApiMaintenanceGet(AsyncWebServerRequest *request);
+void handleApiMaintenancePost(AsyncWebServerRequest *request);
+void handleApiLogsGet(AsyncWebServerRequest *request);
+void handleApiLogsDownload(AsyncWebServerRequest *request);
+void handleApiPredictionGet(AsyncWebServerRequest *request);
+void handleApiEnergyGet(AsyncWebServerRequest *request);
+void handleApiHealthGet(AsyncWebServerRequest *request);
+void handleApiCamera(AsyncWebServerRequest *request); // Anda mungkin perlu implementasi spesifik untuk ini
+void handleApiMode(AsyncWebServerRequest *request);
+void handleApiInverter(AsyncWebServerRequest *request);
+void handleLogin(AsyncWebServerRequest *request); // Anda perlu logika autentikasi di sini
+void handleNotFound(AsyncWebServerRequest *request);
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len); // Handler event WebSocket
 
 // Variabel untuk sensor
 float temperatureGudang = 0;
@@ -1003,7 +1046,7 @@ void checkSystemHealth() {
 //============================================================================
 // FUNGSI WEBSOCKET
 //============================================================================
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+void webSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch(type) {
     case WStype_DISCONNECTED:
       Serial.printf("[%u] Disconnected!\n", num);
@@ -1110,6 +1153,103 @@ String getSensorDataJSON() {
   return jsonString;
 }
 
+//============================================================================
+// FUNGSI UNTUK MENGIRIM DATA SENSOR VIA WEBSOCKET KE SEMUA CLIENT
+//============================================================================
+void sendSensorDataToClients() {
+    StaticJsonDocument<1024> doc; // Sesuaikan ukuran jika perlu
+    // Isi doc dengan data sensor terbaru (mirip handleApiSensors)
+    doc["temperature"] = temperatureGudang;
+    doc["humidity"] = humidityGudang;
+    doc["lightGudang"] = lightGudang;
+    doc["co2"] = co2Gudang;
+    doc["soilMoisture"] = soilMoisture;
+    doc["pressure"] = pressureKebun;
+    doc["temperatureKebun"] = temperatureKebun;
+    doc["lightKebun"] = lightKebun;
+    doc["waterPressure"] = waterPressure;
+    doc["batteryVoltage"] = batteryVoltage;
+    doc["batterySOC"] = batteryData.soc;
+    doc["batteryCycles"] = batteryData.cycles;
+    doc["pir1"] = pir1Status;
+    doc["pir2"] = pir2Status;
+    doc["emergency"] = emergencyMode;
+    doc["mode"] = modeNames[config.operationMode];
+    doc["timestamp"] = getFormattedTime();
+
+    // Data beban
+    JsonArray loadsArray = doc.createNestedArray("loads");
+    for (int i = 0; i < MAX_LOADS; i++) {
+        JsonObject loadObj = loadsArray.createNestedObject();
+        loadObj["name"] = loads[i].name;
+        loadObj["status"] = loads[i].status;
+        // Tambahkan info lain jika perlu
+    }
+
+    String output;
+    serializeJson(doc, output);
+
+    // Kirim data JSON ke semua client WebSocket yang terhubung
+    ws.textAll(output);
+}
+
+
+//============================================================================
+// INISIALISASI WEB SERVER (Gabungan)
+//============================================================================
+void initializeWebServer() {
+  // --- Setup WebSocket ---
+  ws.onEvent(onWsEvent); // Daftarkan fungsi handler event WebSocket
+  server.addHandler(&ws); // Tambahkan WebSocket handler ke server
+
+  // --- Setup Rute Halaman HTML ---
+  server.on("/", HTTP_GET, handleRoot); // Gunakan HTTP_GET untuk halaman
+  server.on("/graphs", HTTP_GET, handleGraphs);
+  server.on("/control", HTTP_GET, handleControl);
+  server.on("/system", HTTP_GET, handleSystem); // Rute untuk System Status
+  // server.on("/status", HTTP_GET, handleStatus); // Hapus jika /status sama dengan /system
+  server.on("/maintenance", HTTP_GET, handleMaintenance);
+  server.on("/settings", HTTP_GET, handleSettings);
+  server.on("/logs", HTTP_GET, handleLogs);
+  server.on("/prediction", HTTP_GET, handlePrediction);
+
+  // --- Setup Rute API ---
+  server.on("/api/sensors", HTTP_GET, handleApiSensors);
+  server.on("/api/control", HTTP_POST, handleApiControl); // Bisa juga handle GET jika diperlukan
+  server.on("/api/config", HTTP_GET, handleApiConfigGet);
+  server.on("/api/config", HTTP_POST, handleApiConfigPost);
+  server.on("/api/rules", HTTP_GET, handleApiRulesGet);
+  server.on("/api/rules", HTTP_POST, handleApiRulesPost);
+  server.on("/api/rules", HTTP_DELETE, handleApiRulesDelete);
+  server.on("/api/schedules", HTTP_GET, handleApiSchedulesGet);
+  server.on("/api/schedules", HTTP_POST, handleApiSchedulesPost);
+  server.on("/api/maintenance", HTTP_GET, handleApiMaintenanceGet);
+  server.on("/api/maintenance", HTTP_POST, handleApiMaintenancePost);
+  server.on("/api/logs", HTTP_GET, handleApiLogsGet);
+  server.on("/api/logs/download", HTTP_GET, handleApiLogsDownload);
+  server.on("/api/prediction", HTTP_GET, handleApiPredictionGet);
+  server.on("/api/energy", HTTP_GET, handleApiEnergyGet);
+  server.on("/api/health", HTTP_GET, handleApiHealthGet);
+  server.on("/api/camera", HTTP_POST, handleApiCamera); // Perlu penanganan khusus
+  server.on("/api/mode", HTTP_POST, handleApiMode);
+  server.on("/api/inverter", HTTP_POST, handleApiInverter);
+
+  // --- Setup Autentikasi ---
+  server.on("/login", HTTP_POST, handleLogin); // Bisa juga handle GET untuk menampilkan form login jika ada
+
+  // --- Setup PWA (memanggil fungsi yang sudah Anda buat) ---
+  initializePWA();
+
+  // --- Setup Handler Not Found ---
+  server.onNotFound(handleNotFound);
+
+  // --- Mulai Server ---
+  server.begin();
+  Serial.println("Web server started");
+  logMessage("INFO", "Web server started", "SYSTEM");
+}
+
+    
 //============================================================================
 // FUNGSI PROGRESSIVE WEB APP (PWA)
 //============================================================================
@@ -3288,7 +3428,7 @@ void handleStatus() {
     return server.requestAuthentication();
   }
   
-  String html = getStatusHTML();
+  String html = getSystemHTML();
   server.send(200, "text/html", html);
 }
 
@@ -3339,7 +3479,7 @@ void handleNotFound() {
 //============================================================================
 // API HANDLERS
 //============================================================================
-void handleApiSensors() {
+void handleApiSensors(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3398,31 +3538,68 @@ void handleApiSensors() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiControl() {
-  // Cek autentikasi
-  if (!server.authenticate(config.webUsername, config.webPassword)) {
-    return server.requestAuthentication();
-  }
-  
-  String body = server.arg("plain");
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, body);
-  
-  if (error) {
-    server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-    return;
-  }
-  
-  String loadName = doc["load"];
-  bool status = doc["status"];
-  
-  controlLoad(loadName, status);
-  
-  String response = "{\"success\":true,\"load\":\"" + loadName + "\",\"status\":" + String(status) + "}";
-  server.send(200, "application/json", response);
+void handleApiControl(AsyncWebServerRequest *request) {
+    // Handler untuk body request (jika menggunakan JSON)
+    if (request->hasParam("load", true) && request->hasParam("status", true)) {
+        // Handle form data (jika dikirim sebagai form)
+        String loadName = request->getParam("load", true)->value();
+        bool status = request->getParam("status", true)->value() == "true";
+
+        // Cari load berdasarkan nama dan update statusnya (atau kirim ke task kontrol)
+        bool found = false;
+        for(int i=0; i < MAX_LOADS; i++){
+            if(loads[i].name == loadName){
+                // Contoh: Langsung kontrol atau kirim command ke queue
+                // controlLoad(loadName, status); // Jika Anda punya fungsi ini
+                loads[i].command = status; // Atau set command saja jika task lain yg eksekusi
+                logMessage("INFO", "Control command received for " + loadName + ": " + (status ? "ON" : "OFF"), "CONTROL");
+                found = true;
+                break;
+            }
+        }
+
+        if(found){
+             request->send(200, "application/json", "{\"success\":true}");
+        } else {
+             request->send(400, "application/json", "{\"success\":false, \"error\":\"Load not found\"}");
+        }
+
+    } else {
+        // Jika data dikirim sebagai JSON body
+        AsyncWebParameter* p = request->getParam(0); // Ambil body
+        if (p && p->isPost() && p->contentType() == "application/json") {
+            StaticJsonDocument<200> doc;
+            DeserializationError error = deserializeJson(doc, p->value());
+            if (error) {
+                request->send(400, "application/json", "{\"success\":false, \"error\":\"Invalid JSON\"}");
+                return;
+            }
+
+            const char* loadName = doc["load"];
+            bool status = doc["status"];
+
+             // Cari load berdasarkan nama dan update statusnya
+            bool found = false;
+             for(int i=0; i < MAX_LOADS; i++){
+                if(loads[i].name == loadName){
+                    loads[i].command = status;
+                    logMessage("INFO", "Control command received via JSON for " + String(loadName) + ": " + (status ? "ON" : "OFF"), "CONTROL");
+                    found = true;
+                    break;
+                }
+            }
+             if(found){
+                 request->send(200, "application/json", "{\"success\":true}");
+             } else {
+                 request->send(400, "application/json", "{\"success\":false, \"error\":\"Load not found\"}");
+            }
+        } else {
+            request->send(400, "application/json", "{\"success\":false, \"error\":\"Invalid request\"}");
+        }
+    }
 }
 
-void handleApiConfigGet() {
+void handleApiConfigGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3463,7 +3640,7 @@ void handleApiConfigGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiConfigPost() {
+void handleApiConfigPost(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3570,7 +3747,7 @@ void handleApiConfigPost() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
-void handleApiRulesGet() {
+void handleApiRulesGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3597,7 +3774,7 @@ void handleApiRulesGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiRulesPost() {
+void handleApiRulesPost(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3628,7 +3805,7 @@ void handleApiRulesPost() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
-void handleApiRulesDelete() {
+void handleApiRulesDelete(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3660,7 +3837,7 @@ void handleApiRulesDelete() {
   }
 }
 
-void handleApiSchedulesGet() {
+void handleApiSchedulesGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3687,7 +3864,7 @@ void handleApiSchedulesGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiSchedulesPost() {
+void handleApiSchedulesPost(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3728,7 +3905,7 @@ void handleApiSchedulesPost() {
   }
 }
 
-void handleApiMaintenanceGet() {
+void handleApiMaintenanceGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3754,7 +3931,7 @@ void handleApiMaintenanceGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiMaintenancePost() {
+void handleApiMaintenancePost(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3785,7 +3962,7 @@ void handleApiMaintenancePost() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
-void handleApiLogsGet() {
+void handleApiLogsGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3812,7 +3989,7 @@ void handleApiLogsGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiLogsDownload() {
+void handleApiLogsDownload(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3833,7 +4010,7 @@ void handleApiLogsDownload() {
   file.close();
 }
 
-void handleApiPredictionGet() {
+void handleApiPredictionGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3855,7 +4032,7 @@ void handleApiPredictionGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiEnergyGet() {
+void handleApiEnergyGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3883,7 +4060,7 @@ void handleApiEnergyGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiHealthGet() {
+void handleApiHealthGet(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3910,7 +4087,7 @@ void handleApiHealthGet() {
   server.send(200, "application/json", jsonString);
 }
 
-void handleApiCamera() {
+void handleApiCamera(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3941,7 +4118,7 @@ void handleApiCamera() {
   }
 }
 
-void handleApiMode() {
+void handleApiMode(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -3975,7 +4152,7 @@ void handleApiMode() {
   server.send(400, "application/json", "{\"error\":\"Invalid mode\"}");
 }
 
-void handleApiInverter() {
+void handleApiInverter(AsyncWebServerRequest *request) {
   // Cek autentikasi
   if (!server.authenticate(config.webUsername, config.webPassword)) {
     return server.requestAuthentication();
@@ -4001,7 +4178,7 @@ void handleApiInverter() {
   server.send(200, "application/json", "{\"success\":true}");
 }
 
-void handleLogin() {
+void handleLogin(AsyncWebServerRequest *request) {
   String username = server.arg("username");
   String password = server.arg("password");
   
